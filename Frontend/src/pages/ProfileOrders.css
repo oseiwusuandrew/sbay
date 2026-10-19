@@ -1,0 +1,121 @@
+.orders-page > * { max-width: 920px; width: 100%; }
+
+.order-tabs { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+.order-tabs::-webkit-scrollbar { display: none; }
+.tab-count {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 20px;
+  text-align: center;
+}
+.chip.active .tab-count { background: rgba(255, 255, 255, 0.2); color: #fff; }
+
+.olist { display: flex; flex-direction: column; gap: 12px; }
+.ocard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.ocard-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+.ocard-inv { font-weight: 800; font-size: var(--fs-sm); letter-spacing: .02em; }
+.ocard-body {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 16px;
+}
+.ocard-thumb { width: 72px; height: 72px; border-radius: var(--r-md); object-fit: cover; background: var(--surface-3); }
+.ocard-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ocard-info h3 { font-size: 1rem; font-weight: 700; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ocard-eta { font-size: var(--fs-sm); color: var(--text); margin-top: 2px; }
+.ocard-total { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; }
+.ocard-total strong { font-size: 1.1rem; font-weight: 800; white-space: nowrap; }
+
+.ostepper {
+  list-style: none;
+  margin: 0;
+  padding: 2px 16px 14px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+}
+.ostepper li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-soft);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: center;
+}
+.ostepper li::before {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: -50%;
+  right: 50%;
+  height: 2px;
+  background: var(--border);
+}
+.ostepper li:first-child::before { display: none; }
+.ostepper .dot {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--border-strong);
+  z-index: 1;
+}
+.ostepper li.done { color: var(--primary-dark); }
+.ostepper li.done::before { background: var(--primary); }
+.ostepper li.done .dot { background: var(--primary); border-color: var(--primary); }
+.ostepper li[aria-current='step'] .dot { box-shadow: 0 0 0 4px var(--primary-100); }
+
+.ocard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+}
+.ocard-cancel { margin-left: auto; }
+
+@media (max-width: 600px) {
+  .ocard-body { grid-template-columns: 60px minmax(0, 1fr); }
+  .ocard-thumb { width: 60px; height: 60px; }
+  .ocard-total { grid-column: 1 / -1; flex-direction: row; justify-content: space-between; align-items: baseline; }
+  .ostepper .lbl { font-size: 0.66rem; }
+  .ocard-actions .btn { flex: 1 1 auto; }
+  .ocard-cancel { margin-left: 0; }
+}
+
+/* Details sheet */
+.osheet { max-width: 520px; max-height: 88vh; overflow-y: auto; }
+.osheet-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.osheet-head h3 { margin-bottom: 6px; }
+.osheet-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.osheet-items li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: baseline; }
+.osheet-items a { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.osheet-items a:hover { color: var(--primary); }
+.osheet-sum { display: flex; flex-direction: column; gap: 6px; padding: 12px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); font-size: var(--fs-sm); }
+.osheet-sum div { display: flex; justify-content: space-between; }
+.osheet-sum .tot { font-size: 1rem; }
+.osheet-loc { display: flex; align-items: center; gap: 6px; font-size: var(--fs-sm); color: var(--text-muted); }
+.osheet .timeline-step small { display: inline; }

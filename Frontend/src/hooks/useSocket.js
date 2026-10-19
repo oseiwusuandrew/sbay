@@ -12,12 +12,16 @@ const SOCKET_URL = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'http:
  */
 export function useSocket() {
   const { user } = useAuth();
+  // Key on identity, not the user object: every profile edit produces a
+  // new object, which used to tear down and re-open the socket.
+  const userId = user?.id;
   const socketRef = useRef(null);
+  const [socket, setSocket] = useState(null);
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
     const token = getToken();
-    if (!token || !user) {
+    if (!token || !userId) {
       if (socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;
@@ -42,13 +46,15 @@ export function useSocket() {
     });
 
     socketRef.current = socket;
+    setSocket(socket);
 
     return () => {
       socket.disconnect();
       socketRef.current = null;
+      setSocket(null);
       setConnected(false);
     };
-  }, [user]);
+  }, [userId]);
 
   const on = useCallback((event, handler) => {
     socketRef.current?.on(event, handler);
@@ -58,5 +64,5 @@ export function useSocket() {
     socketRef.current?.off(event, handler);
   }, []);
 
-  return { socket: socketRef.current, connected, on, off };
+  return { socket, connected, on, off };
 }

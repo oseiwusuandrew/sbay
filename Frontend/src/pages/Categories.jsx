@@ -2,9 +2,10 @@ import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Search, X, MapPin, ChevronRight, ChevronLeft,
-  ShoppingBag, GraduationCap, Store, Tag, Layers,
+  ShoppingBag, GraduationCap, Store, Tag,
 } from 'lucide-react';
 import BottomNav from '../components/BottomNav';
+import ProductCard, { ProductGrid } from '../components/ProductCard';
 import Footer from '../components/Footer';
 import { sbay } from '../api/client';
 import './pages.css';
@@ -26,7 +27,6 @@ export default function Categories() {
 
   /* ── data ── */
   const [schools,       setSchools]       = useState([]);
-  const [allCategories, setAllCategories] = useState([]);
   const [schoolLoading, setSchoolLoading] = useState(true);
   const [products,      setProducts]      = useState([]);
   const [prodLoading,   setProdLoading]   = useState(false);
@@ -51,16 +51,6 @@ export default function Categories() {
         const rest   = tree.filter((s) => s.id !== 'others');
         const sorted = [...rest, ...others];
         setSchools(sorted);
-        // Collect all unique categories across all schools
-        const catMap = new Map();
-        for (const s of sorted) {
-          for (const c of (s.categories || [])) {
-            const existing = catMap.get(c.id);
-            if (existing) existing.count += c.count;
-            else catMap.set(c.id, { ...c });
-          }
-        }
-        setAllCategories(Array.from(catMap.values()).sort((a, b) => b.count - a.count));
         setSchoolLoading(false);
       })
       .catch(() => {
@@ -480,29 +470,18 @@ export default function Categories() {
                 <section key={catName} className="cat-section">
                   <div className="cat-section-hd">
                     <h2><Tag size={14} /> {catName}</h2>
-                    <span className="cat-see-all-label">{items.length} item{items.length !== 1 ? 's' : ''}</span>
-                  </div>
-                  <div className="cat-section-grid">
-                    {items.slice(0, 6).map((p) => (
-                      <button
-                        key={p.id}
-                        className="cat-section-card"
-                        onClick={() => navigate(`/product/${p.id}`)}
-                      >
-                        <div
-                          className="cat-section-thumb"
-                          style={{ backgroundImage: `url(${p.image})` }}
-                        />
-                        <span className="cat-section-name">{p.title}</span>
-                        <span className="cat-section-price">
-                          GH₵ {p.price?.toLocaleString()}
-                          {p.discountPrice && p.discountPrice > p.price && (
-                            <span className="cell-was">GH₵ {p.discountPrice.toLocaleString()}</span>
-                          )}
-                        </span>
+                    {items.length > 8 ? (
+                      <button className="view-all" onClick={() => navigate(`/search?category=${encodeURIComponent(catName)}`)}>
+                        See all {items.length}
                       </button>
-                    ))}
+                    ) : (
+                      <span className="cat-see-all-label">{items.length} item{items.length !== 1 ? 's' : ''}</span>
+                    )}
                   </div>
+                  {/* Sections used to silently stop at 6 items with no way to see the rest. */}
+                  <ProductGrid dense>
+                    {items.slice(0, 8).map((p) => <ProductCard key={p.id} p={p} />)}
+                  </ProductGrid>
                 </section>
               ))}
             </div>

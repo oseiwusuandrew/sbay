@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { adminApi } from '../api/client';
-import { ShieldCheck, ShieldOff, UserPlus, Trash2, Mail } from 'lucide-react';
+import { ShieldCheck, ShieldOff, UserPlus, Mail } from 'lucide-react';
 import { useAdminConfirm } from './AdminConfirmContext';
 
 /**

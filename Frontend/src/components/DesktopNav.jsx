@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { Search, Bell, ShoppingCart, Plus, LayoutGrid, Home as HomeIc, TrendingUp } from 'lucide-react';
+import { Search, Bell, ShoppingCart, Plus, LayoutGrid, Home as HomeIc, TrendingUp, Heart } from 'lucide-react';
+import { useWishlist } from '../store/WishlistContext';
 import Logo from './Logo';
 import Avatar from './Avatar';
 import { useCart } from '../store/CartContext';
@@ -20,6 +21,7 @@ export default function DesktopNav() {
   const { count } = useCart();
   const { user } = useAuth();
   const { unread } = useUserNotifications();
+  const { count: saved } = useWishlist();
 
   const [searchQ, setSearchQ] = useState('');
 
@@ -36,7 +38,6 @@ export default function DesktopNav() {
     e.preventDefault();
     const q = searchQ.trim();
     navigate(q ? `/search?q=${encodeURIComponent(q)}` : '/search');
-    setSearchQ('');
   };
 
   return (
@@ -64,7 +65,7 @@ export default function DesktopNav() {
           <input
             type="search"
             className="dnav-search-input"
-            placeholder="Search campus deals..."
+            placeholder="Search textbooks, phones, fashion…"
             value={searchQ}
             onChange={(e) => setSearchQ(e.target.value)}
             aria-label="Search"
@@ -73,13 +74,19 @@ export default function DesktopNav() {
 
         <div className="dnav-actions">
           <button className="dnav-sell" onClick={goSell}>
-            <Plus size={16} /> Sell
+            <Plus size={16} /> <span>Sell</span>
           </button>
-          <button className="icon-btn" aria-label="Notifications" onClick={() => navigate('/notifications')}>
-            <Bell size={20} />
-            {unread > 0 && <span className="badge">{unread}</span>}
+          {user && (
+            <button className="icon-btn" aria-label={`Notifications${unread ? ` (${unread} unread)` : ''}`} title="Notifications" onClick={() => navigate('/notifications')}>
+              <Bell size={20} />
+              {unread > 0 && <span className="badge">{unread}</span>}
+            </button>
+          )}
+          <button className="icon-btn" aria-label={`Saved items (${saved})`} title="Saved" onClick={() => navigate('/profile/wishlist')}>
+            <Heart size={20} />
+            {saved > 0 && <span className="badge badge--muted">{saved}</span>}
           </button>
-          <button className="icon-btn" aria-label="Cart" onClick={() => navigate('/cart')}>
+          <button className="icon-btn" aria-label={`Cart (${count} items)`} title="Cart" onClick={() => navigate('/cart')}>
             <ShoppingCart size={20} />
             {count > 0 && <span className="badge">{count}</span>}
           </button>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search } from 'lucide-react';
+import { Search, MessageCircle } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import BottomNav from '../components/BottomNav';
 import { sbay } from '../api/client';
@@ -37,6 +37,19 @@ export default function ChatList() {
         </div>
 
         {loading && <SkeletonList count={5} />}
+
+        {!loading && filtered.length === 0 && (
+          <div className="empty">
+            <span className="empty-ic"><MessageCircle size={26} /></span>
+            <h3>{q ? 'No matching conversations' : 'No messages yet'}</h3>
+            <p className="muted">
+              {q
+                ? 'Try a different name.'
+                : 'Chats unlock once you place an order, so you can arrange pickup or delivery with the seller.'}
+            </p>
+            {!q && <button className="btn btn-primary" onClick={() => navigate('/home')}>Browse listings</button>}
+          </div>
+        )}
 
         <div className="chat-list">
           {filtered.map((c) => (

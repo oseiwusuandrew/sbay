@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, LayoutGrid, User, Plus, Store, ShoppingBag } from 'lucide-react';
+import { Home, LayoutGrid, User, Plus, Store, ShoppingBag, MessageCircle } from 'lucide-react';
 import { useAuth } from '../store/AuthContext';
 import './BottomNav.css';
 
@@ -12,7 +12,7 @@ const BUYER_ITEMS = [
   { id: 'home',       label: 'Home',       path: '/home',       icon: Home },
   { id: 'categories', label: 'Categories', path: '/categories', icon: LayoutGrid },
   { id: 'sell',       label: 'Sell',       path: '/sell',       icon: Plus, center: true },
-  { id: 'orders',     label: 'Orders',     path: '/orders',     icon: ShoppingBag },
+  { id: 'orders',     label: 'Orders',     path: '/profile/orders', icon: ShoppingBag },
   { id: 'profile',    label: 'Profile',    path: '/profile',    icon: User },
 ];
 
@@ -20,6 +20,8 @@ const BUYER_ITEMS = [
 const SELLER_ITEMS = [
   { id: 'home',       label: 'Home',       path: '/home',            icon: Home },
   { id: 'categories', label: 'Categories', path: '/categories',      icon: LayoutGrid },
+  { id: 'sell',       label: 'Sell',       path: '/sell',            icon: Plus, center: true },
+  { id: 'messages',   label: 'Messages',   path: '/chats',           icon: MessageCircle },
   { id: 'dashboard',  label: 'Dashboard',  path: '/seller-dashboard', icon: Store },
 ];
 
@@ -46,7 +48,9 @@ export default function BottomNav() {
         const active = !center && (
           pathname === path ||
           (path === '/categories' && pathname.startsWith('/category')) ||
-          (path === '/seller-dashboard' && pathname.startsWith('/seller'))
+          (path === '/chats' && pathname.startsWith('/chat')) ||
+          (path === '/profile' && pathname.startsWith('/profile') && !pathname.startsWith('/profile/orders')) ||
+          (path === '/seller-dashboard' && (pathname.startsWith('/seller-dashboard') || pathname.startsWith('/seller/')))
         );
         return (
           <button
@@ -54,6 +58,7 @@ export default function BottomNav() {
             type="button"
             className={`nav-item ${active ? 'active' : ''} ${center ? 'center' : ''}`}
             onClick={() => handleClick(item)}
+            aria-current={active ? 'page' : undefined}
           >
             <span className="nav-icon"><Icon size={center ? 24 : 20} /></span>
             <span className="nav-label">{label}</span>

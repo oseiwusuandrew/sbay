@@ -45,7 +45,11 @@
 .fab-text strong { font-weight: 800; font-size: 0.85rem; }
 .fab-text span   { font-size: 0.72rem; opacity: 0.9; }
 
-/* On screens without bottom nav (e.g. PDP), still float above its actions. */
 @media (max-width: 720px) {
   .fab-cart { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* Desktop has a cart icon with a badge in the top nav. */
+@media (min-width: 961px) {
+  .fab-cart { display: none; }
 }

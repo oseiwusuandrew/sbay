@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ghs } from '../utils/money';
 import { motion } from 'framer-motion';
 import { MessageCircle, Package, Truck } from 'lucide-react';
 import TopBar from '../components/TopBar';
@@ -10,13 +12,30 @@ import { sbay } from '../api/client';
 import './pages.css';
 import './SellerDashboard.css';
 
-const SELLER_SETTABLE = new Set(['pending', 'processing', 'shipped', 'delivered']);
-const STATUS_LABEL = ORDER_STATUSES.reduce((m, s) => (m[s.id] = s.label, m), {});
+// Orders only move forward; the API rejects backwards steps.
+const FLOW = ['pending', 'processing', 'shipped', 'delivered'];
+const STATUS_LABEL = ORDER_STATUSES.reduce((m, s) => ({ ...m, [s.id]: s.label }), {});
 
 export default function SellerSales() {
   const navigate = useNavigate();
   const confirm = useConfirm();
-  const { salesOrders, setStatus } = useOrders();
+  const { salesOrders, setStatus, cancel } = useOrders();
+  const [err, setErr] = useState('');
+
+  const act = async (fn) => {
+    setErr('');
+    try { await fn(); } catch (e) { setErr(e.message || 'Could not update the order.'); }
+  };
+
+  const onDecline = async (o) => {
+    const ok = await confirm({
+      title: 'Decline this order?',
+      body: 'The order is canceled, the buyer is refunded from escrow and the item goes back on sale.',
+      confirmLabel: 'Decline order',
+      danger: true,
+    });
+    if (ok) act(() => cancel(o._id, 'Declined by seller'));
+  };
 
   const pending = salesOrders.filter(
     (o) => !['delivered', 'completed', 'canceled'].includes(o.status)
@@ -25,10 +44,10 @@ export default function SellerSales() {
   const messageBuyer = async (order) => {
     const otherId = order.buyerId;
     if (!otherId || otherId === 'me') return;
-    try {
+    act(async () => {
       const chat = await sbay.startChat(otherId);
       navigate(`/chat/${chat._id}`);
-    } catch (e) { alert(e.message || 'Could not open this chat.'); }
+    });
   };
 
   const onMarkDelivered = async (id) => {
@@ -37,7 +56,7 @@ export default function SellerSales() {
       body: "Confirm you handed the item to the buyer. They'll be asked to confirm receipt to release the funds.",
       confirmLabel: 'Yes, delivered',
     });
-    if (ok) setStatus(id, 'delivered');
+    if (ok) act(() => setStatus(id, 'delivered'));
   };
 
   return (
@@ -54,6 +73,8 @@ export default function SellerSales() {
             </p>
           </div>
         </div>
+
+        {err && <div className="notice notice--error" role="alert">{err}</div>}
 
         {salesOrders.length === 0 && (
           <div className="empty">
@@ -77,27 +98,34 @@ export default function SellerSales() {
                 {o.invoiceNumber || `#${o.id}`} · {o.buyerName} · Escrow
               </p>
               <p className="muted small">📍 {o.buyerLocation || o.deliveryLocation || '—'}</p>
-              <span className="price">GH₵ {o.price.toLocaleString()}</span>
+              <span className="price">You earn {ghs(o.subtotal ?? o.price * o.qty)}</span>
             </div>
             <div className="order-side">
               <span className={`status ${o.status}`}>{STATUS_LABEL[o.status]}</span>
-              <select
-                className="status-select"
-                value={o.status}
-                onChange={(e) => setStatus(o.id, e.target.value)}
-                disabled={!SELLER_SETTABLE.has(o.status)}
-              >
-                {ORDER_STATUSES
-                  .filter((s) => SELLER_SETTABLE.has(s.id) || s.id === o.status)
-                  .map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
-              </select>
-              <button className="btn btn-ghost small" onClick={() => messageBuyer(o)}>
-                <MessageCircle size={14} /> Message buyer
-              </button>
-              {!['delivered', 'completed', 'canceled'].includes(o.status) && (
-                <button className="btn btn-primary" onClick={() => onMarkDelivered(o.id)}>
-                  <Truck size={14} /> Mark Delivered
+              {FLOW.includes(o.status) && o.status !== 'delivered' && (
+                <select
+                  className="status-select"
+                  value={o.status}
+                  aria-label="Update order status"
+                  onChange={(e) => act(() => setStatus(o._id, e.target.value))}
+                >
+                  {FLOW.slice(FLOW.indexOf(o.status)).map((s) => (
+                    <option key={s} value={s} disabled={s === o.status}>{STATUS_LABEL[s]}</option>
+                  ))}
+                </select>
+              )}
+              {o.status !== 'canceled' && (
+                <button className="btn btn-ghost small" onClick={() => messageBuyer(o)}>
+                  <MessageCircle size={14} /> Message buyer
                 </button>
+              )}
+              {!['delivered', 'completed', 'canceled'].includes(o.status) && (
+                <button className="btn btn-primary btn-sm" onClick={() => onMarkDelivered(o._id)}>
+                  <Truck size={14} /> Mark delivered
+                </button>
+              )}
+              {['pending', 'processing'].includes(o.status) && (
+                <button className="btn btn-danger btn-sm" onClick={() => onDecline(o)}>Decline</button>
               )}
             </div>
           </motion.article>

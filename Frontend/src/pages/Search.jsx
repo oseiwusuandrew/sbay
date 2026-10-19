@@ -1,117 +1,157 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { Search as SearchIcon, ArrowLeft, X, PackageSearch } from 'lucide-react';
 import { sbay } from '../api/client';
 import BottomNav from '../components/BottomNav';
 import Footer from '../components/Footer';
+import ProductCard, { ProductGrid } from '../components/ProductCard';
 import { SkeletonGrid } from '../components/Skeleton';
 import './pages.css';
 import './Search.css';
 
+const SORTS = [
+  { id: 'recent', label: 'Newest' },
+  { id: 'popular', label: 'Most viewed' },
+  { id: 'price_asc', label: 'Price: low to high' },
+  { id: 'price_desc', label: 'Price: high to low' },
+];
+
 export default function SearchPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const initialQ = searchParams.get('q') || '';
+  const [params, setParams] = useSearchParams();
+  const q = params.get('q') || '';
+  const category = params.get('category') || '';
+  const sort = params.get('sort') || 'recent';
 
-  const [q, setQ] = useState(initialQ);
+  const [draft, setDraft] = useState(q);
   const [categories, setCategories] = useState([]);
-  const [filter, setFilter] = useState('All');
   const [results, setResults] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const debounce = useRef(null);
 
-  // Load real categories from API
+  const update = (patch) => {
+    const next = new URLSearchParams(params);
+    Object.entries(patch).forEach(([k, v]) => (v ? next.set(k, v) : next.delete(k)));
+    setParams(next, { replace: true });
+  };
+
+  // Keep the box in sync when the URL changes (back/forward, header search).
+  useEffect(() => { setDraft(q); }, [q]);
+
   useEffect(() => {
-    sbay.getCategories().then((cats) => {
-      setCategories(['All', ...cats.filter((c) => c.id !== 'all').map((c) => c.label)]);
-    }).catch(() => {
-      setCategories(['All']);
-    });
+    sbay.getCategories()
+      .then((cats) => setCategories(cats.filter((c) => c.id !== 'all')))
+      .catch(() => setCategories([]));
   }, []);
+
+  // Query the API once typing pauses — it used to fire on every keystroke
+  // (and could trip the rate limiter) and never recovered from errors.
+  const onType = (value) => {
+    setDraft(value);
+    clearTimeout(debounce.current);
+    debounce.current = setTimeout(() => update({ q: value.trim() }), 300);
+  };
+  useEffect(() => () => clearTimeout(debounce.current), []);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
-    const catParam = filter !== 'All' ? filter.toLowerCase() : '';
-    sbay.searchProducts(q, catParam).then((r) => {
-      if (active) { setResults(r); setLoading(false); }
-    });
+    setError('');
+    const req = { sort, limit: 60 };
+    if (q) req.q = q;
+    if (category) req.category = category;
+    sbay.searchPage(req)
+      .then(({ items, total: t }) => { if (active) { setResults(items); setTotal(t); } })
+      .catch((e) => { if (active) { setResults([]); setError(e.message || 'Search failed.'); } })
+      .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [q, filter]);
+  }, [q, category, sort]);
+
+  const heading = q
+    ? `Results for “${q}”`
+    : category ? category : 'All listings';
 
   return (
     <div className="page">
       <header className="search-top">
-        <button className="back-btn" onClick={() => navigate(-1)}>
+        <button className="round-btn" onClick={() => navigate(-1)} aria-label="Back">
           <ArrowLeft size={20} />
         </button>
-        <div className="search-input-wrap">
-          <SearchIcon size={18} className="leading" />
+        <form
+          className="search-input-wrap"
+          role="search"
+          onSubmit={(e) => { e.preventDefault(); clearTimeout(debounce.current); update({ q: draft.trim() }); }}
+        >
+          <SearchIcon size={18} className="leading" aria-hidden />
           <input
-            autoFocus
-            placeholder="Search campus deals..."
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
+            autoFocus={!q && !category}
+            type="search"
+            placeholder="Search textbooks, phones, fashion…"
+            value={draft}
+            onChange={(e) => onType(e.target.value)}
+            aria-label="Search"
           />
-          {q && (
-            <button className="clear" onClick={() => setQ('')} aria-label="Clear">
+          {draft && (
+            <button type="button" className="clear" onClick={() => onType('')} aria-label="Clear search">
               <X size={16} />
             </button>
           )}
-        </div>
+        </form>
       </header>
 
-      {categories.length > 1 && (
-        <div className="filter-row">
-          {categories.map((f) => (
+      {categories.length > 0 && (
+        <div className="filter-row" role="toolbar" aria-label="Filter by category">
+          <button className={`chip ${!category ? 'active' : ''}`} onClick={() => update({ category: '' })}>All</button>
+          {categories.map((c) => (
             <button
-              key={f}
-              className={`chip ${filter === f ? 'active' : ''}`}
-              onClick={() => setFilter(f)}
+              key={c.id}
+              className={`chip ${category.toLowerCase() === c.label.toLowerCase() ? 'active' : ''}`}
+              onClick={() => update({ category: c.label })}
             >
-              {f}
+              {c.label}
             </button>
           ))}
         </div>
       )}
 
       <main className="page-main">
+        <div className="search-head">
+          <div>
+            <h1 className="page-h1">{heading}</h1>
+            {!loading && !error && <p className="muted small">{total} item{total === 1 ? '' : 's'}</p>}
+          </div>
+          <label className="sort-select">
+            <span className="sr-only">Sort by</span>
+            <select value={sort} onChange={(e) => update({ sort: e.target.value === 'recent' ? '' : e.target.value })}>
+              {SORTS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+            </select>
+          </label>
+        </div>
+
+        {error && <div className="notice notice--error" role="alert">{error}</div>}
+
         {loading ? (
-          <SkeletonGrid count={8} />
-        ) : results.length === 0 ? (
+          <SkeletonGrid count={10} />
+        ) : results.length === 0 && !error ? (
           <div className="empty">
-            <div className="emo"><PackageSearch size={44} /></div>
-            <h3>{q ? `No results for "${q}"` : 'Start typing to search'}</h3>
-            <p>{q ? 'Try a different keyword or browse categories.' : 'Find anything from textbooks to electronics.'}</p>
-            {q && (
-              <button className="btn btn-ghost" onClick={() => navigate('/categories')}>
-                Browse Categories
+            <span className="empty-ic"><PackageSearch size={26} /></span>
+            <h3>{q ? `No results for “${q}”` : 'Nothing here yet'}</h3>
+            <p>{q ? 'Check the spelling, try a shorter word, or browse by category.' : 'Try another category.'}</p>
+            {(q || category) && (
+              <button className="btn btn-ghost" onClick={() => { setDraft(''); update({ q: '', category: '' }); }}>
+                Clear search
               </button>
             )}
           </div>
         ) : (
-          <div className="results-grid">
-            {results.map((p, i) => (
-              <motion.article
-                key={p.id}
-                className="result-card"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => navigate(`/product/${p.id}`)}
-              >
-                <div className="result-img" style={{ backgroundImage: `url(${p.image})` }} />
-                <div className="result-body">
-                  <h4 className="prod-title">{p.title}</h4>
-                  <span className="price">GH₵ {p.price.toLocaleString()}</span>
-                </div>
-              </motion.article>
-            ))}
-          </div>
+          <ProductGrid>
+            {results.map((p) => <ProductCard key={p.id} p={p} />)}
+          </ProductGrid>
         )}
-        <Footer />
       </main>
+      <Footer />
       <BottomNav />
     </div>
   );

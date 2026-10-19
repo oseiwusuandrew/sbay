@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { ArrowLeft, Send, Package, Lock } from 'lucide-react';
 import { api } from '../api/client';
 import { adaptChat, adaptMessage } from '../api/adapters';
 import { useAuth } from '../store/AuthContext';
+import { useSocket } from '../hooks/useSocket';
 import './pages.css';
 import './IndividualChat.css';
 
@@ -30,7 +31,7 @@ export default function IndividualChat() {
   const [error, setError] = useState('');
   const endRef = useRef(null);
 
-  const isSeller = user?.role === 'seller';
+  const isSeller = chat ? chat.viewerRole === 'seller' : user?.role === 'seller';
 
   const load = async () => {
     try {
@@ -45,7 +46,17 @@ export default function IndividualChat() {
     }
   };
 
-  useEffect(() => { if (id && user) load(); /* eslint-disable-next-line */ }, [id, user]);
+  useEffect(() => { if (id && user) load(); /* eslint-disable-next-line */ }, [id, user?.id]);
+
+  // Live updates: the API emits `message:new` to the recipient.
+  const { on, off, connected } = useSocket();
+  useEffect(() => {
+    if (!connected) return;
+    const handler = (evt) => { if (String(evt?.chatId) === String(id)) load(); };
+    on('message:new', handler);
+    return () => off('message:new', handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connected, id, on, off]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });

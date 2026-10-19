@@ -12,11 +12,13 @@
 }
 .co-item:last-child { border-bottom: none; }
 .co-item .thumb {
-  width: 50px; height: 50px; border-radius: var(--r-md);
+  width: 56px; height: 56px; border-radius: var(--r-md);
   background-size: cover; background-position: center;
+  background-color: var(--surface-3);
+  flex-shrink: 0;
 }
 .co-item h4 { font-size: 0.9rem; font-weight: 700; }
-.co-item .price { font-weight: 700; color: var(--primary); }
+.co-item .price { font-weight: 800; }
 
 .method-grid {
   display: grid; grid-template-columns: 1fr 1fr;
@@ -74,17 +76,16 @@
   display: grid; place-items: center;
 }
 
-.co-totals { display: flex; flex-direction: column; gap: 8px; }
-.co-totals .row { display: flex; justify-content: space-between; }
-.co-totals .row.total { font-size: 1.05rem; }
-.co-totals .row.total strong { color: var(--primary); }
+.co-totals { display: flex; flex-direction: column; gap: 10px; }
+.co-totals .row { display: flex; justify-content: space-between; gap: 12px; }
+.co-totals .row.total { font-size: 1.15rem; }
+.co-totals .row.total strong { font-size: 1.35rem; font-weight: 800; }
 .co-note-card {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
-  padding: 14px;
+  padding: 16px;
   cursor: default;
-  box-shadow: var(--shadow-sm);
 }
 .co-paystack-card {
   border-color: rgba(10, 126, 62, 0.28);
@@ -227,26 +228,18 @@
 }
 .co-review-loc p { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; }
 
-.btn-sm {
-  padding: 6px 12px;
-  font-size: 0.8rem;
-  min-height: 0;
-}
-
 /* Error banner on checkout */
 .co-error {
-  display: flex; align-items: center; gap: 8px;
-  background: #fdecea; color: #c0392b;
-  border: 1px solid #f5c6cb;
+  display: flex; align-items: flex-start; gap: 8px;
+  background: var(--error-50); color: var(--error);
+  border: 1px solid #F3C4BF;
   border-radius: var(--r-md);
   padding: 10px 12px;
   margin-top: 12px;
   font-size: .9rem;
+  font-weight: 600;
 }
-
-/* Inline spinner used in the Confirm & Pay button */
-.spin { animation: sbay-spin 1s linear infinite; }
-@keyframes sbay-spin { to { transform: rotate(360deg); } }
+.co-error svg { flex-shrink: 0; margin-top: 2px; }
 
 @media (min-width: 961px) {
   .checkout-page .page-main {
@@ -256,7 +249,7 @@
     gap: 28px;
   }
   .co-details-col { display: flex; flex-direction: column; gap: 20px; }
-  .co-summary-col { position: sticky; top: 84px; }
+  .co-summary-col { position: sticky; top: calc(var(--nav-h) + 20px); }
   .method-grid { grid-template-columns: 1fr 1fr; }
   .co-item .thumb { width: 60px; height: 60px; }
 }

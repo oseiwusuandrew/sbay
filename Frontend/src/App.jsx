@@ -5,6 +5,7 @@ import { AuthProvider } from './store/AuthContext';
 import { ConfirmProvider } from './store/ConfirmContext';
 import { OrdersProvider } from './store/OrdersContext';
 import { LocationProvider } from './store/LocationContext';
+import { WishlistProvider } from './store/WishlistContext';
 import RequireAuth from './components/RequireAuth';
 import ScrollToTop from './components/ScrollToTop';
 import FloatingCart from './components/FloatingCart';
@@ -93,6 +94,7 @@ export default function App() {
         <CartProvider>
           <OrdersProvider>
             <LocationProvider>
+            <WishlistProvider>
             <BrowserRouter>
               <ScrollToTop />
               <DesktopNav />
@@ -131,7 +133,8 @@ export default function App() {
                 <Route path="/notifications"   element={<RequireAuth><Notifications /></RequireAuth>} />
                 <Route path="/profile"         element={<Profile />} />
                 <Route path="/profile/orders"   element={<RequireAuth><ProfileOrders /></RequireAuth>} />
-                <Route path="/profile/wishlist" element={<RequireAuth><ProfileWishlist /></RequireAuth>} />
+                <Route path="/profile/wishlist" element={<ProfileWishlist />} />
+                <Route path="/wishlist"         element={<Navigate to="/profile/wishlist" replace />} />
                 <Route path="/profile/settings" element={<RequireAuth><ProfileSettings /></RequireAuth>} />
                 <Route path="/orders"           element={<Navigate to="/profile/orders" replace />} />
 
@@ -175,6 +178,7 @@ export default function App() {
               </Routes>
               </Suspense>
             </BrowserRouter>
+            </WishlistProvider>
             </LocationProvider>
           </OrdersProvider>
         </CartProvider>

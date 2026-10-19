@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Camera, Plus, Check, ArrowRight, ArrowLeft as Back, X, Info,
+  Camera, Check, ArrowRight, ArrowLeft as Back, X, Info,
   Tag, FileText, Image as ImageIcon, DollarSign, Eye,
-  Loader2, CreditCard, CheckCircle2, Lock,
+  Loader2, CreditCard, Lock,
 } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import BottomNav from '../components/BottomNav';
@@ -22,7 +22,7 @@ const STEPS = [
     label: 'Name',
     icon: Tag,
     title: 'What are you selling?',
-    help: 'Start with a clear, specific name. Buyers find listings by title — include brand, model and a key spec (e.g. "Apple iPad Pro 12.9\" — 256GB").',
+    help: 'Start with a clear, specific name. Buyers find listings by title — include brand, model and a key spec (e.g. "Apple iPad Pro 12.9-inch, 256GB").',
   },
   {
     id: 'photos',

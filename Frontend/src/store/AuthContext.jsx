@@ -36,9 +36,14 @@ export function AuthProvider({ children }) {
     if (!getToken()) { setBooting(false); return; }
     authApi.me()
       .then((fresh) => { if (alive) setUser(fresh); })
-      .catch(() => {
-        setToken(null);
-        if (alive) setUser(null);
+      .catch((e) => {
+        // Only a definitive auth answer signs the user out. A timeout or
+        // network blip (e.g. the API waking from a cold start) keeps the
+        // cached session instead of kicking everyone to the login page.
+        if (e?.status === 401 || e?.status === 403) {
+          setToken(null);
+          if (alive) setUser(null);
+        }
       })
       .finally(() => { if (alive) setBooting(false); });
     return () => { alive = false; };
@@ -106,40 +111,6 @@ export function AuthProvider({ children }) {
   };
 
   /**
-   * Local-only subscription state — the actual plan/feePct lives in
-   * the backend's Plan + the user's `subscription` field. We update
-   * it via `updateUser`; the backend will apply the change. The
-   * platform charges the next time the seller checks out (Stripe-
-   * style invoicing is out of scope for v1).
-   */
-  const subscribe = async (planId, paymentMethod = 'momo') => {
-    if (!planId) throw new Error('Pick a plan.');
-    const fresh = await authApi.updateMe({});
-    // Subscription assignment is handled via the admin panel for v1.
-    // Front-end optimistically reflects the choice locally so the UX
-    // is unchanged.
-    setUser((u) => (u ? {
-      ...u,
-      subscription: {
-        plan: planId,
-        status: planId === 'free' ? 'free' : 'active',
-        method: paymentMethod,
-        renewsOn: planId === 'free' ? null : Date.now() + 30 * 24 * 3600 * 1000,
-        startedAt: Date.now(),
-      },
-    } : fresh));
-    return true;
-  };
-
-  const cancelSubscription = async () => {
-    setUser((u) => (u && u.subscription ? {
-      ...u,
-      subscription: { ...u.subscription, status: 'canceled', canceledAt: Date.now() },
-    } : u));
-    return true;
-  };
-
-  /**
    * Password reset — backend endpoints are not yet implemented. We
    * keep the legacy in-memory ticket so the existing /forgot-password
    * flow still works end-to-end in development. Wire to real endpoints
@@ -166,7 +137,7 @@ export function AuthProvider({ children }) {
       user, booting,
       login, signup, logout, googleLogin,
       upgradeToSeller, updateUser, refreshMe,
-      submitVerification, subscribe, cancelSubscription,
+      submitVerification,
       requestPasswordReset, resetPassword,
     }}>
       {children}

@@ -1,304 +1,243 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Star, ArrowRight, Heart, Shield, MapPin, Search as SearchIcon, Flame, Package } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import {
+  ArrowRight, ShieldCheck, BadgeCheck, Smartphone, Search as SearchIcon,
+  MapPin, Package, Star, Wallet, MessageCircle, PackageCheck, Plus,
+} from 'lucide-react';
 import TopBar from '../components/TopBar';
 import BottomNav from '../components/BottomNav';
 import Footer from '../components/Footer';
 import CampusBanner from '../components/CampusBanner';
+import ProductCard, { ProductGrid, ProductRail } from '../components/ProductCard';
+import Avatar from '../components/Avatar';
 import { sbay } from '../api/client';
+import { useAuth } from '../store/AuthContext';
 import { useLocation as useCampus } from '../store/LocationContext';
 import { SkeletonGrid, Skeleton } from '../components/Skeleton';
+import './pages.css';
 import './Home.css';
 
 export default function Home() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { campus } = useCampus();
-  const [trending, setTrending] = useState([]);
-  const [sellers, setSellers] = useState([]);
-  const [recent, setRecent] = useState([]);
-  const [saved, setSaved] = useState({});
-  const [query, setQuery] = useState('');
+  const [feed, setFeed] = useState({ trending: [], recent: [], sellers: [] });
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [query, setQuery] = useState('');
   const [showAllLocal, setShowAllLocal] = useState(false);
 
   useEffect(() => {
     let active = true;
-
     sbay.getHomeFeed()
-      .then((feed) => {
-        if (!active) return;
-        setTrending(feed.trending);
-        setRecent(feed.recent);
-        setSellers(feed.sellers);
-      })
-      .catch(() => {
-        // Fallback: if combined endpoint fails, try individual calls
-        if (!active) return;
-        Promise.allSettled([sbay.getTrending(), sbay.getRecent()])
-          .then(([trendingRes, recentRes]) => {
-            if (!active) return;
-            setTrending(trendingRes.status === 'fulfilled' ? trendingRes.value : []);
-            setRecent(recentRes.status === 'fulfilled' ? recentRes.value : []);
-          });
-        sbay.getSellers()
-          .then((value) => { if (active) setSellers(value); })
-          .catch(() => { if (active) setSellers([]); });
-      })
+      .then((f) => { if (active) setFeed(f); })
+      .catch(() => { if (active) setFailed(true); })
       .finally(() => { if (active) setLoading(false); });
-
-    return () => {
-      active = false;
-    };
+    sbay.getCategories()
+      .then((cats) => { if (active) setCategories(cats.filter((c) => c.id !== 'all').slice(0, 10)); })
+      .catch(() => {});
+    return () => { active = false; };
   }, []);
 
-  const toggleSave = (e, id) => {
-    e.stopPropagation();
-    setSaved((p) => ({ ...p, [id]: !p[id] }));
+  const { trending, recent, sellers } = feed;
+
+  // Home used to filter only the ~24 items already on screen; real
+  // search lives on /search and queries the whole catalogue.
+  const submitSearch = (e) => {
+    e.preventDefault();
+    const q = query.trim();
+    navigate(q ? `/search?q=${encodeURIComponent(q)}` : '/search');
   };
 
-  const q = query.trim().toLowerCase();
-
-  const matches = useMemo(() => {
-    if (!q) return null;
-    return [...trending, ...recent].filter((p) =>
-      p.title.toLowerCase().includes(q)
-    );
-  }, [q, trending, recent]);
-
-  const featuredSellers = sellers.filter((s) => s.verified);
-  const noListingsYet = !loading && trending.length === 0 && recent.length === 0 && sellers.length === 0;
-
-  // Local products — filter by campus when one is selected
   const localProducts = useMemo(() => {
     if (!campus) return [];
     const school = campus.label.toLowerCase();
-    const city   = (campus.city || '').toLowerCase();
-    return [...trending, ...recent].filter((p) => {
+    const city = (campus.city || '').toLowerCase();
+    const seen = new Set();
+    return [...recent, ...trending].filter((p) => {
+      if (seen.has(p.id)) return false;
+      seen.add(p.id);
       const ps = (p.school || '').toLowerCase();
-      const pc = (p.city   || '').toLowerCase();
-      return ps.includes(school) || school.includes(ps) ||
-             (city && (pc.includes(city) || city.includes(pc)));
+      const pc = (p.city || '').toLowerCase();
+      return (ps && (ps.includes(school) || school.includes(ps))) || (city && pc && (pc.includes(city) || city.includes(pc)));
     });
   }, [campus, trending, recent]);
 
-  const localVisible = showAllLocal ? localProducts : localProducts.slice(0, 6);
+  const featuredSellers = sellers.filter((s) => s.verified);
+  const empty = !loading && !failed && trending.length === 0 && recent.length === 0;
+
+  const goSell = () => {
+    if (!user) navigate('/login?mode=seller&next=' + encodeURIComponent('/become-seller'));
+    else if (user.role !== 'seller') navigate('/become-seller');
+    else navigate('/sell');
+  };
 
   return (
-    <div className="home">
-      <TopBar
-        hideActions={false}
-        searchValue={query}
-        onSearchChange={setQuery}
-        searchPlaceholder="Search phones, books, sneakers, snacks..."
-      />
+    <div className="home page">
+      <TopBar hideActions={false} searchPlaceholder="Search phones, books, sneakers…" />
+
+      <section className="hero">
+        <div className="hero-inner">
+          <div className="hero-copy">
+            <span className="hero-eyebrow"><ShieldCheck size={14} /> Escrow-protected campus marketplace</span>
+            <h1>Buy and sell on campus, <span>without the risk.</span></h1>
+            <p className="hero-sub">
+              Your money is held safely until you confirm the item reached you.
+              Shop from verified students at UG, KNUST, UCC and more.
+            </p>
+            <form className="hero-search" onSubmit={submitSearch} role="search">
+              <SearchIcon size={20} aria-hidden />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="What are you looking for?"
+                aria-label="Search sBay"
+              />
+              <button type="submit" className="btn btn-primary">Search</button>
+            </form>
+            {categories.length > 0 && (
+              <div className="hero-cats" aria-label="Popular categories">
+                {categories.map((c) => (
+                  <Link key={c.id} className="chip" to={`/search?category=${encodeURIComponent(c.label)}`}>
+                    {c.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <ul className="hero-trust">
+            <li>
+              <span className="ht-ic"><Wallet size={18} /></span>
+              <div><strong>Pay safely</strong><small>Funds held until you confirm delivery</small></div>
+            </li>
+            <li>
+              <span className="ht-ic"><BadgeCheck size={18} /></span>
+              <div><strong>Verified sellers</strong><small>Student ID checks by the sBay team</small></div>
+            </li>
+            <li>
+              <span className="ht-ic"><Smartphone size={18} /></span>
+              <div><strong>MoMo or card</strong><small>MTN, Telecel, AirtelTigo &amp; Visa via Paystack</small></div>
+            </li>
+          </ul>
+        </div>
+      </section>
 
       <CampusBanner />
 
       <main className="home-main">
-        {matches !== null ? (
-          <section className="section">
-            <div className="section-head">
-              <h2 className="section-title">
-                {matches.length} result{matches.length === 1 ? '' : 's'} for "{query}"
-              </h2>
-            </div>
-            {matches.length === 0 ? (
-              <div className="empty">
-                <div className="emo"><SearchIcon size={44} /></div>
-                <h3>Nothing matched your search</h3>
-                <p className="muted">Try a different keyword.</p>
-              </div>
-            ) : (
-              <div className="recent-grid">
-                {matches.map((p, i) => (
-                  <ProductCard
-                    key={p.id}
-                    p={p}
-                    i={i}
-                    saved={saved[p.id]}
-                    toggleSave={toggleSave}
-                    onClick={() => navigate(`/product/${p.id}`)}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-        ) : noListingsYet ? (
+        {failed && (
+          <div className="notice notice--warn" role="alert">
+            We couldn't load listings right now. The server may be waking up, so try again in a moment.
+            <button className="link-btn" onClick={() => window.location.reload()}>Retry</button>
+          </div>
+        )}
+
+        {empty ? (
           <section className="section">
             <div className="empty">
-              <div className="emo"><Package size={44} /></div>
-              <h3>No products yet</h3>
-              <p className="muted">Listings will appear here once sellers start posting items on campus.</p>
+              <span className="empty-ic"><Package size={26} /></span>
+              <h3>No listings yet</h3>
+              <p className="muted">Be the first to sell something on your campus.</p>
+              <button className="btn btn-primary" onClick={goSell}><Plus size={16} /> List an item</button>
             </div>
           </section>
         ) : (
           <>
-            {/* ── Local products (only when campus set) ── */}
-            {campus && !loading && localProducts.length > 0 && (
+            {campus && localProducts.length > 0 && (
               <section className="section">
-                <div className="section-head">
-                  <h2 className="section-title">
-                    <MapPin size={16} style={{ color: 'var(--primary)', verticalAlign: 'middle' }} />
-                    {' '}Near you at {campus.label}
-                  </h2>
-                  {localProducts.length > 6 && (
-                    <button className="view-all" onClick={() => setShowAllLocal((v) => !v)}>
-                      {showAllLocal ? 'Show less' : `See all ${localProducts.length}`} <ArrowRight size={14} />
-                    </button>
-                  )}
-                </div>
-                <div className="recent-grid-2col">
-                  {localVisible.map((p, i) => (
-                    <ProductCard
-                      key={p.id}
-                      p={p}
-                      i={i}
-                      saved={saved[p.id]}
-                      toggleSave={toggleSave}
-                      onClick={() => navigate(`/product/${p.id}`)}
-                    />
-                  ))}
-                </div>
+                <SectionHead
+                  title={<><MapPin size={18} className="sh-ic" /> Near you at {campus.label}</>}
+                  action={localProducts.length > 5
+                    ? { label: showAllLocal ? 'Show less' : `See all ${localProducts.length}`, onClick: () => setShowAllLocal((v) => !v) }
+                    : null}
+                />
+                <ProductGrid>
+                  {(showAllLocal ? localProducts : localProducts.slice(0, 5)).map((p) => <ProductCard key={p.id} p={p} />)}
+                </ProductGrid>
               </section>
             )}
 
             <section className="section">
-              <div className="section-head">
-                <h2 className="section-title">Trending on Campus</h2>
-                <button className="view-all" onClick={() => navigate('/trending')}>
-                  View all <ArrowRight size={14} />
-                </button>
-              </div>
+              <SectionHead
+                title="Trending on campus"
+                sub="Most viewed this week"
+                action={{ label: 'View all', onClick: () => navigate('/trending') }}
+              />
+              {loading ? <SkeletonGrid count={5} /> : (
+                <ProductRail label="Trending listings">
+                  {trending.map((p, i) => <ProductCard key={p.id} p={p} rank={i + 1} variant="rail" />)}
+                </ProductRail>
+              )}
+            </section>
 
-              {loading ? (
-                <SkeletonGrid count={3} />
-              ) : trending.length === 0 ? (
-                <div className="empty">
-                  <div className="emo"><Flame size={44} /></div>
-                  <h3>No trending products yet</h3>
-                  <p className="muted">Once buyers start viewing and purchasing items, the hottest listings will show up here.</p>
-                </div>
-              ) : (
-                <div className="trend-scroller">
-                  {trending.map((p, i) => (
-                    <motion.article
-                      key={p.id}
-                      className="trend-card"
-                      initial={{ opacity: 0, y: 16 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.02, duration: 0.25 }}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => navigate(`/product/${p.id}`)}
-                    >
-                      <div className="trend-img">
-                        <img src={p.image} alt={p.title} loading="lazy" decoding="async" />
-                        {p.badge && (
-                          <span className={`pill ${p.badge === 'TRENDING' ? 'pill-gold' : 'pill-red'}`}>
-                            {p.badge === 'TRENDING' ? <><Flame size={12} /> TRENDING</> : 'HOTTEST'}
+            {(loading || featuredSellers.length > 0) && (
+              <section className="section">
+                <SectionHead title="Trusted campus sellers" sub="Verified by the sBay team" />
+                {loading ? <Skeleton h={96} r={16} /> : (
+                  <div className="seller-rail">
+                    {featuredSellers.map((s) => (
+                      <Link key={s.id} to={`/seller/${s.id}`} className="seller-tile">
+                        <Avatar src={s.avatar} name={s.name} size={52} />
+                        <div className="seller-tile-info">
+                          <strong>{s.name} <BadgeCheck size={14} className="pcard-verified" aria-label="Verified" /></strong>
+                          <span className="seller-tile-rating">
+                            <Star size={13} fill="currentColor" aria-hidden /> {Number(s.rating || 0).toFixed(1)}
+                            <em>({s.reviews} review{s.reviews === 1 ? '' : 's'})</em>
                           </span>
-                        )}
-                      </div>
-                      <div className="trend-body">
-                        <div className="trend-row">
-                          <h3 className="prod-title">{p.title}</h3>
-                          <span className="price">
-                            GH₵ {p.price.toLocaleString()}
-                            {p.discountPrice && p.discountPrice > p.price && (
-                              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textDecoration: 'line-through', marginLeft: 4 }}>
-                                GH₵ {p.discountPrice.toLocaleString()}
-                              </span>
-                            )}
-                          </span>
+                          {s.location && <span className="seller-tile-loc">{s.location}</span>}
                         </div>
-                        <p className="prod-meta">
-                          <MapPin size={12} /> {p.school}{p.city ? `, ${p.city}` : ''}
-                        </p>
-                      </div>
-                    </motion.article>
-                  ))}
-                </div>
-              )}
-            </section>
+                        <ArrowRight size={16} className="seller-tile-chev" />
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
 
             <section className="section">
-              <div className="section-head">
-                <h2 className="section-title">Trusted Campus Sellers</h2>
-              </div>
-
-              {loading ? (
-                <Skeleton h={140} r={16} />
-              ) : featuredSellers.length === 0 ? (
-                <div className="empty">
-                  <div className="emo"><Shield size={44} /></div>
-                  <h3>No sellers featured yet</h3>
-                  <p className="muted">Seller profiles will appear here after listings are posted.</p>
-                </div>
-              ) : (
-                <div className="sellers-scroller">
-                  {featuredSellers.map((s) => (
-                    <article
-                      key={s.id}
-                      className="seller-big"
-                      onClick={() => navigate(`/seller/${s.id}`)}
-                    >
-                      <div className="seller-avatar xl" style={{ backgroundImage: `url(${s.avatar})` }} />
-                      <div className="seller-info">
-                        <h4>
-                          {s.name}
-                          {s.verified && (
-                            <span className="verified-pill" title="Verified seller">
-                              <Shield size={11} /> Verified
-                            </span>
-                          )}
-                        </h4>
-                        <p className="muted small">{s.tagline}</p>
-                        <p className="seller-rating">
-                          <Star size={14} fill="#F5A623" color="#F5A623" />
-                          <strong>{s.rating}</strong>
-                          <span className="muted">({s.reviews} reviews)</span>
-                        </p>
-                      </div>
-                      <ArrowRight size={18} className="seller-chev" />
-                    </article>
-                  ))}
-                </div>
-              )}
-            </section>
-
-            <section className="section">
-              <div className="section-head">
-                <h2 className="section-title">Recently Added</h2>
-                <button className="view-all" onClick={() => navigate('/categories')}>
-                  See more <ArrowRight size={14} />
-                </button>
-              </div>
-
-              {loading ? (
-                <SkeletonGrid count={4} />
-              ) : recent.length === 0 ? (
-                <div className="empty">
-                  <div className="emo"><Package size={44} /></div>
-                  <h3>No products added yet</h3>
-                  <p className="muted">As soon as sellers publish new listings, they’ll appear here.</p>
-                </div>
-              ) : (
-                <div className="recent-grid-2col">
-                  {recent.map((p, i) => (
-                    <ProductCard
-                      key={p.id}
-                      p={p}
-                      i={i}
-                      saved={saved[p.id]}
-                      toggleSave={toggleSave}
-                      onClick={() => navigate(`/product/${p.id}`)}
-                    />
-                  ))}
-                </div>
+              <SectionHead
+                title="Just listed"
+                action={{ label: 'Browse categories', onClick: () => navigate('/categories') }}
+              />
+              {loading ? <SkeletonGrid count={10} /> : (
+                <ProductGrid>
+                  {recent.map((p) => <ProductCard key={p.id} p={p} />)}
+                </ProductGrid>
               )}
             </section>
           </>
         )}
+
+        <section className="how" aria-labelledby="how-title">
+          <h2 id="how-title">How sBay keeps you safe</h2>
+          <ol className="how-steps">
+            <li>
+              <span className="how-ic"><Wallet size={20} /></span>
+              <strong>Pay into escrow</strong>
+              <p>Checkout with MoMo or card. sBay holds the money, not the seller.</p>
+            </li>
+            <li>
+              <span className="how-ic"><MessageCircle size={20} /></span>
+              <strong>Meet or get delivery</strong>
+              <p>Chat with the seller in-app to arrange pickup on campus.</p>
+            </li>
+            <li>
+              <span className="how-ic"><PackageCheck size={20} /></span>
+              <strong>Confirm and release</strong>
+              <p>Only when you confirm you've got it does the seller get paid.</p>
+            </li>
+          </ol>
+          <div className="how-cta">
+            <div>
+              <strong>Got something to sell?</strong>
+              <p className="muted">List it in under a minute and reach students on your campus.</p>
+            </div>
+            <button className="btn btn-secondary" onClick={goSell}><Plus size={16} /> Start selling</button>
+          </div>
+        </section>
       </main>
 
       <Footer />
@@ -307,43 +246,18 @@ export default function Home() {
   );
 }
 
-/** Card showing campus + hall location and a save heart. */
-function ProductCard({ p, i, saved, toggleSave, onClick }) {
+function SectionHead({ title, sub, action }) {
   return (
-    <motion.article
-      className="recent-card"
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: i * 0.02, duration: 0.25 }}
-      whileTap={{ scale: 0.97 }}
-      onClick={onClick}
-    >
-      <div className="recent-img">
-        <img src={p.image} alt={p.title} loading="lazy" decoding="async" />
-        <button
-          className={`heart-btn ${saved ? 'saved' : ''}`}
-          onClick={(e) => toggleSave(e, p.id)}
-          aria-label="Save"
-        >
-          <Heart size={16} fill={saved ? '#D32F2F' : 'none'} />
+    <div className="section-head">
+      <div>
+        <h2 className="section-title">{title}</h2>
+        {sub && <p className="section-sub">{sub}</p>}
+      </div>
+      {action && (
+        <button className="view-all" onClick={action.onClick}>
+          {action.label} <ArrowRight size={14} />
         </button>
-      </div>
-      <div className="recent-body">
-        {p.tag && <span className="tag">{p.tag}</span>}
-        <h4 className="prod-title">{p.title}</h4>
-        <div className="recent-row">
-          <span className="price">GH₵ {p.price.toLocaleString()}</span>
-          {p.discountPrice && p.discountPrice > p.price && (
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textDecoration: 'line-through' }}>
-              GH₵ {p.discountPrice.toLocaleString()}
-            </span>
-          )}
-        </div>
-        <p className="prod-loc">
-          <MapPin size={12} />
-          <span>{p.school}{p.city ? `, ${p.city}` : ''}</span>
-        </p>
-      </div>
-    </motion.article>
+      )}
+    </div>
   );
 }

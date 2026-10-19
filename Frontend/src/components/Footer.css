@@ -1,33 +1,43 @@
-/* Site footer — renders below all page content (not fixed) */
+/* Site footer — renders below page content (not fixed). The page wrapper
+   already reserves room for the mobile bottom nav. */
 .site-footer {
-  text-align: center;
-  font-size: 0.7rem;
-  color: var(--text-muted);
-  letter-spacing: 0.03em;
-  padding: 18px 16px 8px;
   margin-top: auto;
+  background: var(--surface);
   border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
 }
-
-.site-footer a {
-  color: var(--primary);
-  font-weight: 600;
-  text-decoration: none;
+.sf-inner {
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 28px var(--gutter) 18px;
+  display: grid;
+  gap: 24px;
 }
-.site-footer a:hover { text-decoration: underline; }
-
-/* On mobile, add extra bottom padding so it clears the fixed BottomNav */
-@media (max-width: 960px) {
-  .site-footer {
-    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
-  }
+.sf-brand { display: flex; flex-direction: column; gap: 8px; max-width: 340px; }
+.sf-brand .sbay-logo-image { height: 40px !important; }
+.sf-trust { display: inline-flex; align-items: center; gap: 6px; color: var(--primary-dark); font-weight: 700; font-size: var(--fs-xs); }
+.sf-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.sf-cols div { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.sf-cols h4 { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .06em; color: var(--text); }
+.sf-cols a { overflow-wrap: anywhere; }
+.sf-cols a:hover, .sf-base a:hover { color: var(--primary); }
+.sf-base {
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 14px var(--gutter) 18px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: var(--fs-xs);
 }
+.sf-base a { color: var(--primary); font-weight: 700; }
 
-/* On desktop, just a subtle bottom margin */
-@media (min-width: 961px) {
-  .site-footer {
-    padding: 24px 16px 24px;
-    max-width: 1400px;
-    margin: 0 auto;
-  }
+@media (min-width: 840px) {
+  .sf-inner { grid-template-columns: 1fr 1.4fr; padding-top: 40px; }
+}
+@media (max-width: 480px) {
+  .sf-cols { grid-template-columns: 1fr 1fr; }
 }

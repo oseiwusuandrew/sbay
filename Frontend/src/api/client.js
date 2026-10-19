@@ -307,6 +307,12 @@ export const sbay = {
   },
 
 
+  /** Paged search with total count, for the search page. */
+  async searchPage(params = {}) {
+    const { data } = await api.get('/products', { params });
+    return { items: data.items.map(adaptProduct), total: data.total ?? data.items.length };
+  },
+
   async searchProducts(q, category = '') {
     const params = {};
     if (q) params.q = q;
@@ -436,6 +442,11 @@ export const productApi = {
 };
 
 export const paymentApi = {
+  /** Exact breakdown the buyer will be charged (per-seller plan fees). */
+  async quote(items) {
+    const { data } = await api.post('/payments/quote', { items });
+    return data;
+  },
   async initialize(payload) {
     const { data } = await api.post('/payments/initialize', payload);
     return data;

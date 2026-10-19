@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { adminApi } from '../api/client';
 import { useAdminConfirm } from './AdminConfirmContext';
 import {
@@ -15,10 +16,12 @@ import {
  */
 export default function AdminOrders() {
   const { confirm, prompt } = useAdminConfirm();
+  const [params] = useSearchParams();
   const [items, setItems]         = useState([]);
   const [q, setQ]                 = useState('');
   const [status, setStatus]       = useState('');
-  const [escrowStatus, setEscrow] = useState('');
+  // Honour dashboard deep links such as ?escrow=held.
+  const [escrowStatus, setEscrow] = useState(params.get('escrow') || '');
   const [busy, setBusy]           = useState(false);
   const [err, setErr]             = useState('');
   const [detail, setDetail]       = useState(null); // selected order
@@ -41,30 +44,38 @@ export default function AdminOrders() {
     finally { setBusy(false); }
   }, [q, status, escrowStatus]);
 
-  const isNew = (date) => Date.now() - new Date(date).getTime() < 24 * 3600 * 1000;
+  const [now] = useState(() => Date.now());
+  const isNew = (date) => now - new Date(date).getTime() < 24 * 3600 * 1000;
 
   useEffect(() => { load(); }, [load]);
 
+  // Merge the server's updated order into the open drawer. (It used to
+  // re-query by Mongo id against the invoice-number search, which never
+  // matched, so the drawer kept showing stale escrow state.)
+  const applyUpdate = (updated) => {
+    if (!updated) return;
+    setDetail((cur) => (cur?._id === updated._id
+      ? { ...cur, status: updated.status, escrow: updated.escrow, timeline: updated.timeline }
+      : cur));
+  };
+
   const release = async (id) => {
     if (!(await confirm('Release escrow funds to the seller? This cannot be undone.'))) return;
-    await adminApi.post(`/orders/${id}/release-escrow`);
-    load();
-    // If the detail panel is open for this order, refresh it
-    if (detail?._id === id) {
-      const { data } = await adminApi.get('/orders', { params: { q: id } });
-      if (data.items?.[0]) setDetail(data.items[0]);
-    }
+    try {
+      const { data } = await adminApi.post(`/orders/${id}/release-escrow`);
+      applyUpdate(data.order);
+      load();
+    } catch (e) { setErr(e.message || 'Could not release escrow.'); }
   };
 
   const refund = async (id) => {
     const reason = await prompt('Reason for refund (will be saved on the order):', { title: 'Refund Order', placeholder: 'Enter reason…' });
     if (!reason) return;
-    await adminApi.post(`/orders/${id}/refund-escrow`, { reason });
-    load();
-    if (detail?._id === id) {
-      const { data } = await adminApi.get('/orders', { params: { q: id } });
-      if (data.items?.[0]) setDetail(data.items[0]);
-    }
+    try {
+      const { data } = await adminApi.post(`/orders/${id}/refund-escrow`, { reason });
+      applyUpdate(data.order);
+      load();
+    } catch (e) { setErr(e.message || 'Could not refund escrow.'); }
   };
 
   const ESCROW_CLASS = {

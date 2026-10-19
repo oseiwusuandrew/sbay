@@ -4,7 +4,19 @@ import { useState } from 'react';
 import { useAuth } from '../store/AuthContext';
 import './OAuthButtons.css';
 
-export default function OAuthButtons({ role = 'buyer', next = '/home', remember = true }) {
+const GOOGLE_ENABLED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
+
+/**
+ * Google sign-in. Without VITE_GOOGLE_CLIENT_ID the Google SDK throws
+ * during render, which used to blank the entire Login/Signup page — so
+ * the button simply isn't offered when it isn't configured.
+ */
+export default function OAuthButtons(props) {
+  if (!GOOGLE_ENABLED) return null;
+  return <GoogleButton {...props} />;
+}
+
+function GoogleButton({ next = '/home', remember = true, role = 'buyer' }) {
   const { googleLogin } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState(null);

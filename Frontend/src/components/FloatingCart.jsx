@@ -3,10 +3,12 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ShoppingBag } from 'lucide-react';
 import { useCart } from '../store/CartContext';
+import { ghs } from '../utils/money';
 import './FloatingCart.css';
 
-// Routes that already show cart prominently or where the FAB would clash.
-const HIDE_ON = ['/cart', '/checkout', '/payment-success', '/login', '/signup', '/', '/admin'];
+// Routes that already show cart prominently or where the FAB would clash
+// (product pages have their own purchase bar; chat has its input row).
+const HIDE_ON = ['/cart', '/checkout', '/payment-success', '/login', '/signup', '/', '/admin', '/product', '/chat', '/sell'];
 
 export default function FloatingCart() {
   const navigate = useNavigate();
@@ -55,7 +57,7 @@ export default function FloatingCart() {
           </span>
           <span className="fab-text">
             <strong>View Cart</strong>
-            <span>GH₵ {subtotal.toLocaleString()}</span>
+            <span>{ghs(subtotal)}</span>
           </span>
         </motion.button>
       )}

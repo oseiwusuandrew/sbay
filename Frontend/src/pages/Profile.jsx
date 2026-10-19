@@ -1,5 +1,5 @@
-import { useNavigate } from 'react-router-dom';
-import { Settings, LogOut, ChevronRight, Store, Package, Heart, User, ShoppingBag } from 'lucide-react';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { Settings, LogOut, ChevronRight, Store, Package, Heart, User } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import Avatar from '../components/Avatar';
 import BottomNav from '../components/BottomNav';
@@ -7,6 +7,7 @@ import Footer from '../components/Footer';
 import { useAuth } from '../store/AuthContext';
 import { useConfirm } from '../store/ConfirmContext';
 import { useOrders } from '../store/OrdersContext';
+import { useWishlist } from '../store/WishlistContext';
 import './pages.css';
 import './Profile.css';
 
@@ -21,14 +22,16 @@ export default function Profile() {
   const navigate = useNavigate();
   const confirm = useConfirm();
   const { user, logout } = useAuth();
-  const { orders } = useOrders();
+  const { myOrders: orders } = useOrders();
 
   const isGuest = !user;
 
-  // Sellers go straight to their dashboard
+  const { count: wishlistCount } = useWishlist();
+
+  // Sellers go straight to their dashboard (declaratively — calling
+  // navigate() during render triggers React warnings).
   if (user?.role === 'seller') {
-    navigate('/seller-dashboard', { replace: true });
-    return null;
+    return <Navigate to="/seller-dashboard" replace />;
   }
 
   const onLogout = async () => {
@@ -94,8 +97,8 @@ export default function Profile() {
             <span>Pending</span>
           </div>
           <div className="profile-stat">
-            <strong>0</strong>
-            <span>Wishlist</span>
+            <strong>{wishlistCount}</strong>
+            <span>Saved</span>
           </div>
         </div>
       </section>

@@ -6,6 +6,7 @@
  * Usage:
  *   <Avatar src={user.avatar} name={user.name} size={40} />
  */
+import { useState } from 'react';
 import './Avatar.css';
 
 const PALETTE = [
@@ -30,19 +31,18 @@ export default function Avatar({ src, name = '', size = 40, className = '', styl
   const bg = colorFor(name);
   const ini = initials(name);
   const fontSize = Math.max(10, Math.round(size * 0.38));
+  // Remember which src failed so a broken image falls back to initials
+  // (previously it hid itself and left an empty circle).
+  const [failedSrc, setFailedSrc] = useState(null);
 
-  if (src) {
+  if (src && failedSrc !== src) {
     return (
       <img
         src={src}
         alt={name || 'Avatar'}
         className={`av-img ${className}`}
         style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, ...style }}
-        onError={(e) => {
-          e.currentTarget.style.display = 'none';
-          const sib = e.currentTarget.nextElementSibling;
-          if (sib) sib.style.display = 'flex';
-        }}
+        onError={() => setFailedSrc(src)}
       />
     );
   }

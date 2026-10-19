@@ -154,7 +154,10 @@ export function adaptChat(c, currentUserRole) {
   if (!c) return null;
   const buyer  = typeof c.buyer  === 'object' && c.buyer  ? c.buyer  : null;
   const seller = typeof c.seller === 'object' && c.seller ? c.seller : null;
-  const isSeller = currentUserRole === 'seller';
+  // The API says which side the viewer is on; a seller can also be the
+  // buyer in someone else's shop, so the account role isn't enough.
+  const viewerRole = c.viewerRole || currentUserRole;
+  const isSeller = viewerRole === 'seller';
   const other = isSeller ? buyer : seller;
   const firstOrder = Array.isArray(c.orders) && typeof c.orders[0] === 'object' ? c.orders[0] : null;
   return {
@@ -176,6 +179,7 @@ export function adaptChat(c, currentUserRole) {
     unread: isSeller ? c.unreadBySeller : c.unreadByBuyer,
     closed: c.closed,
     orders: c.orders,
+    viewerRole,
   };
 }
 

@@ -65,8 +65,30 @@ export default function PaymentSuccess() {
   }
 
   function handleVerifyError(e) {
+    // A timeout / network drop / 5xx says nothing about whether the
+    // buyer was charged — don't tell them it failed. Offer a retry and
+    // keep the cart; the Paystack webhook may complete the order anyway.
+    if (!e?.status || e.status >= 500) {
+      verified.current = false;
+      setVerifying(false);
+      setVerifyError("We couldn't confirm your payment yet. If you were charged, your order will appear under My Orders shortly.");
+      return;
+    }
+    if (e.status === 409) {
+      // Charged but couldn't be fulfilled (e.g. sold out mid-payment) —
+      // the API has flagged it for a full refund. Clear the stale cart.
+      clear();
+    }
     navigate(`/payment-failed?reason=${encodeURIComponent(e.message || 'Payment verification failed')}`, { replace: true });
   }
+
+  const retryVerify = () => {
+    if (!reference) return;
+    setVerifyError('');
+    setVerifying(true);
+    verified.current = true;
+    verifyWithPolling(reference).catch(handleVerifyError);
+  };
 
   useEffect(() => {
     if (!reference && !state) navigate('/home', { replace: true });
@@ -93,6 +115,26 @@ export default function PaymentSuccess() {
 
   const location = state?.location || '';
   const payment = state?.payment;
+
+  if (orders.length === 0 && verifyError) {
+    return (
+      <div className="ps-page kente-bg">
+        <div className="ps-card">
+          <div className="ps-check ps-check--wait"><Loader size={34} color="#fff" /></div>
+          <h2>Still confirming…</h2>
+          <p className="muted">{verifyError}</p>
+          <div className="ps-actions">
+            <button className="btn btn-ghost" onClick={() => navigate('/profile/orders')}>
+              <Receipt size={16} /> My orders
+            </button>
+            <button className="btn btn-primary" onClick={retryVerify}>
+              Check again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="ps-page kente-bg">

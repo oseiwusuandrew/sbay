@@ -1,46 +1,67 @@
 /* ===========================================================
    sBay — Global Design System
-   Primary: #0A7E3E (Deep Ghana Green)
-   Secondary: #F5A623 (Warm Gold)
+   Brand: Ghana green #0A7E3E · Accent: gold #F2A516
+   Token names are shared by every page stylesheet — change values
+   here, not per page.
    =========================================================== */
 :root {
   /* Brand */
   --primary: #0A7E3E;
-  --primary-dark: #086530;
-  --primary-50: #E8F3EC;
-  --primary-100: #D4E9DB;
-  --secondary: #F5A623;
-  --secondary-dark: #D88E12;
-  --error: #D32F2F;
+  --primary-dark: #07642F;
+  --primary-ink: #064A23;
+  --primary-50: #EBF6EF;
+  --primary-100: #D3EBDC;
+  --secondary: #F2A516;
+  --secondary-dark: #D48C07;
+  --secondary-50: #FEF5E2;
+  --error: #C9372C;
+  --error-50: #FDECEA;
   --success: #0A7E3E;
+  --info: #2563EB;
 
   /* Surfaces */
-  --bg: #F4F8EE;          /* page background (subtle kente cream) */
+  --bg: #F5F6F3;
   --surface: #FFFFFF;
-  --surface-2: #F7FBF3;
-  --border: #E2E8DA;
-  --border-strong: #C9D4BD;
+  --surface-2: #F9FAF8;
+  --surface-3: #F0F2EE;
+  --border: #E3E7E1;
+  --border-strong: #CBD1C8;
 
   /* Text */
-  --text: #1B2419;
-  --text-muted: #5C6B5A;
-  --text-soft: #8B9789;
+  --text: #131A14;
+  --text-muted: #566057;
+  --text-soft: #858E86;
+
+  /* Focus ring (keyboard users) */
+  --focus: 0 0 0 3px rgba(10, 126, 62, 0.35);
 
   /* Effects */
-  --shadow-sm: 0 1px 2px rgba(10, 60, 30, 0.06);
-  --shadow-md: 0 4px 14px rgba(10, 60, 30, 0.08);
-  --shadow-lg: 0 12px 32px rgba(10, 60, 30, 0.12);
+  --shadow-sm: 0 1px 2px rgba(16, 24, 18, 0.05);
+  --shadow-md: 0 4px 16px rgba(16, 24, 18, 0.07);
+  --shadow-lg: 0 16px 40px rgba(16, 24, 18, 0.12);
 
   /* Radii */
   --r-sm: 8px;
   --r-md: 12px;
   --r-lg: 16px;
-  --r-xl: 22px;
+  --r-xl: 20px;
   --r-pill: 999px;
+
+  /* Layout */
+  --container: 1240px;
+  --gutter: 20px;
+  --nav-h: 68px;
 
   /* Type */
   --sans: 'Urbanist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --heading: 'Urbanist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.875rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.125rem;
+  --fs-xl: 1.375rem;
+  --fs-2xl: 1.75rem;
+  --fs-3xl: clamp(1.9rem, 1.2rem + 2.6vw, 2.9rem);
 
   font-family: var(--sans);
   font-size: 16px;
@@ -50,6 +71,7 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  -webkit-tap-highlight-color: transparent;
 }
 
 * { box-sizing: border-box; }
@@ -60,90 +82,182 @@ html, body, #root {
   min-height: 100svh;
   background: var(--bg);
 }
+body { overflow-x: hidden; }
 
 a { color: inherit; text-decoration: none; }
-button { font-family: inherit; cursor: pointer; border: none; background: none; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+button:disabled { cursor: not-allowed; }
 img { max-width: 100%; display: block; }
+input, select, textarea { font-family: inherit; font-size: 1rem; color: var(--text); }
 
 h1, h2, h3, h4 {
   font-family: var(--heading);
   color: var(--text);
   margin: 0;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
 }
 
 p { margin: 0; }
 
-/* Kente diamond pattern used by Splash & subtle backgrounds */
+/* Visible focus for keyboard users only */
+:focus { outline: none; }
+:focus-visible { outline: none; box-shadow: var(--focus); border-radius: var(--r-sm); }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+/* Kente diamond pattern — kept as a faint brand texture for the splash
+   and payment result screens. */
 .kente-bg {
   background-color: var(--bg);
   background-image:
-    linear-gradient(135deg, rgba(10,126,62,0.06) 25%, transparent 25%),
-    linear-gradient(225deg, rgba(10,126,62,0.06) 25%, transparent 25%),
-    linear-gradient(45deg,  rgba(10,126,62,0.06) 25%, transparent 25%),
-    linear-gradient(315deg, rgba(10,126,62,0.06) 25%, transparent 25%);
+    linear-gradient(135deg, rgba(10,126,62,0.035) 25%, transparent 25%),
+    linear-gradient(225deg, rgba(10,126,62,0.035) 25%, transparent 25%),
+    linear-gradient(45deg,  rgba(10,126,62,0.035) 25%, transparent 25%),
+    linear-gradient(315deg, rgba(10,126,62,0.035) 25%, transparent 25%);
   background-position: 20px 0, 20px 0, 0 0, 0 0;
   background-size: 40px 40px;
   background-repeat: repeat;
 }
 
-/* Buttons */
+/* ---------- Buttons ---------- */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 12px 22px;
-  border-radius: var(--r-pill);
-  font-weight: 600;
+  min-height: 44px;           /* comfortable tap target */
+  padding: 10px 20px;
+  border-radius: var(--r-md);
+  font-weight: 700;
   font-size: 0.95rem;
-  transition: transform .15s ease, box-shadow .2s ease, background .2s ease;
+  line-height: 1.2;
+  border: 1px solid transparent;
+  transition: transform .12s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease, color .2s ease;
+  white-space: nowrap;
+  text-decoration: none;
 }
-.btn:active { transform: scale(0.97); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled { opacity: 0.55; }
 .btn-primary {
   background: var(--primary);
   color: #fff;
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 1px 0 rgba(255,255,255,.15) inset, 0 2px 6px rgba(10, 126, 62, 0.22);
 }
-.btn-primary:hover { background: var(--primary-dark); }
+.btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
 .btn-secondary {
   background: var(--secondary);
   color: #2A1F00;
 }
-.btn-secondary:hover { background: var(--secondary-dark); }
+.btn-secondary:hover:not(:disabled) { background: var(--secondary-dark); }
 .btn-ghost {
-  background: #fff;
+  background: var(--surface);
   color: var(--text);
-  border: 1px solid var(--border);
+  border-color: var(--border);
+}
+.btn-ghost:hover:not(:disabled) { border-color: var(--border-strong); background: var(--surface-2); }
+.btn-soft {
+  background: var(--primary-50);
+  color: var(--primary-dark);
+}
+.btn-soft:hover:not(:disabled) { background: var(--primary-100); }
+.btn-danger {
+  background: var(--surface);
+  color: var(--error);
+  border-color: #F1C9C5;
+}
+.btn-danger:hover:not(:disabled) { background: var(--error-50); }
+.btn-sm, .btn.small { min-height: 36px; padding: 6px 14px; font-size: 0.85rem; border-radius: 10px; }
+.btn-lg { min-height: 52px; padding: 14px 26px; font-size: 1rem; }
+.btn-block { width: 100%; }
+.link-btn {
+  color: var(--primary);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  padding: 0;
 }
 
-/* Chips */
+/* ---------- Form controls ---------- */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > span, .field-label { font-size: var(--fs-sm); font-weight: 700; color: var(--text); }
+.input,
+.field input, .field select, .field textarea {
+  width: 100%;
+  min-height: 46px;
+  padding: 11px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.field textarea { min-height: 110px; resize: vertical; }
+.input:focus, .field input:focus, .field select:focus, .field textarea:focus {
+  border-color: var(--primary);
+  box-shadow: var(--focus);
+}
+.field-hint { font-size: var(--fs-xs); color: var(--text-muted); }
+.field-error { font-size: var(--fs-xs); color: var(--error); font-weight: 600; }
+
+/* ---------- Chips ---------- */
 .chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 14px;
+  min-height: 36px;
+  padding: 6px 14px;
   border-radius: var(--r-pill);
-  font-size: 0.78rem;
+  font-size: 0.85rem;
   font-weight: 600;
-  background: #fff;
+  background: var(--surface);
   color: var(--text-muted);
   border: 1px solid var(--border);
   white-space: nowrap;
   cursor: pointer;
   transition: all .15s ease;
 }
-.chip:hover { border-color: var(--primary); color: var(--primary); }
+.chip:hover { border-color: var(--border-strong); color: var(--text); }
 .chip.active {
-  background: var(--primary);
+  background: var(--text);
   color: #fff;
-  border-color: var(--primary);
+  border-color: var(--text);
 }
+
+/* ---------- Status pills (orders) ---------- */
+.status {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  letter-spacing: .02em;
+  background: var(--surface-3);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.status.pending    { background: #FEF5E2; color: #9A6200; }
+.status.processing { background: #E8F0FE; color: #1D4ED8; }
+.status.shipped    { background: #EEF2FF; color: #4338CA; }
+.status.delivered  { background: var(--primary-50); color: var(--primary-dark); }
+.status.completed  { background: var(--primary-50); color: var(--primary-dark); }
+.status.canceled   { background: var(--error-50); color: var(--error); }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 10px; border: 2px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: var(--text-soft); }
 
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

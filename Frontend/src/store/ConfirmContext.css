@@ -1,7 +1,7 @@
 .cf-backdrop {
   position: fixed; inset: 0;
-  background: rgba(10, 60, 30, 0.45);
-  backdrop-filter: blur(6px);
+  background: rgba(15, 23, 17, 0.5);
+  backdrop-filter: blur(3px);
   display: grid; place-items: center;
   z-index: 100;
   padding: 20px;
@@ -10,8 +10,8 @@
   position: relative;
   background: #fff;
   width: 100%;
-  max-width: 380px;
-  border-radius: 22px;
+  max-width: 400px;
+  border-radius: var(--r-xl);
   padding: 28px 24px 22px;
   text-align: center;
   box-shadow: var(--shadow-lg);
@@ -39,8 +39,9 @@
   display: flex; gap: 10px; margin-top: 20px;
 }
 .cf-actions .btn { flex: 1; }
-.btn-danger {
-  background: var(--error); color: #fff;
-  box-shadow: 0 6px 16px rgba(211,47,47,0.3);
+/* Solid destructive button — scoped to the dialog so it doesn't override
+   the outlined .btn-danger used on pages. */
+.cf-actions .btn-danger {
+  background: var(--error); color: #fff; border-color: var(--error);
 }
-.btn-danger:hover { filter: brightness(0.95); }
+.cf-actions .btn-danger:hover:not(:disabled) { background: #B02E24; }

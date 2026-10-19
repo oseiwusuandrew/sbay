@@ -8,8 +8,9 @@ import {
 import TopBar from '../components/TopBar';
 import { useCart } from '../store/CartContext';
 import { useAuth } from '../store/AuthContext';
-import { paymentApi, sbay } from '../api/client';
+import { paymentApi } from '../api/client';
 import RegionSelector from '../components/RegionSelector';
+import { ghs } from '../utils/money';
 import './pages.css';
 import './Checkout.css';
 
@@ -18,27 +19,39 @@ export default function Checkout() {
   const { items, subtotal } = useCart();
   const { user, updateUser } = useAuth();
 
-  const [location, setLocation] = useState('');
-  const [editingLoc, setEditingLoc] = useState(true);
+  // Start from the buyer's saved location so returning buyers can pay in one tap.
+  const savedLocation = user?.location?.includes(',') ? user.location : '';
+  const [location, setLocation] = useState(savedLocation);
+  const [editingLoc, setEditingLoc] = useState(!savedLocation);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const [feePct, setFeePct] = useState(5);
+  // The server prices the cart exactly as it will charge it — fees can
+  // differ per seller plan, so a client-side estimate would drift.
+  const [quote, setQuote] = useState(null);
+  const [quoteErr, setQuoteErr] = useState('');
+  const cartKey = items.map((it) => `${it._id || it.id}:${it.qty}`).join(',');
   useEffect(() => {
-    sbay.getPublicSettings().then((s) => {
-      if (s?.defaultEscrowFeePct != null) setFeePct(Number(s.defaultEscrowFeePct));
-    }).catch(() => {});
-  }, []);
+    if (!items.length) return;
+    let alive = true;
+    paymentApi.quote(items.map((it) => ({ productId: it._id || it.id, qty: it.qty })))
+      .then((q) => { if (alive) { setQuote(q); setQuoteErr(''); } })
+      .catch((e) => { if (alive) setQuoteErr(e.message || 'Could not price your cart.'); });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartKey]);
 
-  const fee = Math.round(subtotal * feePct / 100);
-  const total = subtotal + fee;
+  const fee = quote?.fee ?? null;
+  const total = quote?.total ?? subtotal;
+  const feePcts = [...new Set((quote?.groups || []).map((g) => g.feePct))];
+  const feeLabel = feePcts.length === 1 ? `Service fee (${feePcts[0]}%)` : 'Service fee';
 
   const saveLocation = () => {
     const v = location.trim();
     if (!v || !v.includes(',')) { setError('Please choose a region and enter your city.'); return false; }
     setError('');
-    updateUser?.({ location: v });
+    updateUser?.({ location: v }).catch(() => {});
     setEditingLoc(false);
     return true;
   };
@@ -88,7 +101,7 @@ export default function Checkout() {
       <main className="page-main">
         <div className="co-details-col">
           <section className="card">
-            <h3 className="page-h2">Order Summary</h3>
+            <h3 className="page-h2">Your items</h3>
             <div className="co-items">
               {items.map((it) => (
                 <div key={it.id} className="co-item">
@@ -97,7 +110,7 @@ export default function Checkout() {
                     <h4>{it.title}</h4>
                     <p className="muted small">Qty {it.qty}</p>
                   </div>
-                  <span className="price">GH₵ {(it.qty * it.price).toLocaleString()}</span>
+                  <span className="price">{ghs(it.qty * it.price)}</span>
                 </div>
               ))}
             </div>
@@ -105,7 +118,7 @@ export default function Checkout() {
 
           <section className="card co-location">
             <div className="co-loc-head">
-              <h3 className="page-h2"><MapPin size={16} /> Pickup Location</h3>
+              <h3 className="page-h2"><MapPin size={16} /> Delivery or pickup location</h3>
               {!editingLoc && location && (
                 <button className="btn btn-ghost btn-sm" onClick={() => setEditingLoc(true)}>
                   <Edit3 size={14} /> Change
@@ -154,10 +167,19 @@ export default function Checkout() {
           </section>
         </div>
         <section className="card co-totals co-summary-col">
-          <div className="row"><span>Subtotal</span><strong>GH₵ {subtotal.toLocaleString()}</strong></div>
-          <div className="row"><span>Service fee ({feePct}%)</span><strong>GH₵ {fee.toLocaleString()}</strong></div>
+          <div className="row"><span>Subtotal</span><strong>{ghs(quote?.subtotal ?? subtotal)}</strong></div>
+          <div className="row">
+            <span>{feeLabel}</span>
+            <strong>{fee === null ? (quoteErr ? '—' : 'Calculating…') : ghs(fee)}</strong>
+          </div>
           <div className="divider" />
-          <div className="row total"><span>Total</span><strong>GH₵ {total.toLocaleString()}</strong></div>
+          <div className="row total"><span>Total</span><strong>{quote ? ghs(total) : '—'}</strong></div>
+          {quoteErr && (
+            <div className="co-error" role="alert">
+              <AlertTriangle size={16} /> {quoteErr}{' '}
+              <button type="button" className="link-btn" onClick={() => navigate('/cart')}>Review cart</button>
+            </div>
+          )}
 
           <button type="button" className="co-review-toggle" onClick={() => setReviewOpen((v) => !v)}>
             {reviewOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -171,7 +193,7 @@ export default function Checkout() {
                 {items.map((it) => (
                   <li key={it.id}>
                     <span>{it.title} × {it.qty}</span>
-                    <strong>GH₵ {(it.qty * it.price).toLocaleString()}</strong>
+                    <strong>{ghs(it.qty * it.price)}</strong>
                   </li>
                 ))}
               </ul>
@@ -197,12 +219,12 @@ export default function Checkout() {
             className="btn btn-primary"
             style={{ width: '100%', marginTop: 14 }}
             onClick={handlePay}
-            disabled={submitting}
+            disabled={submitting || !quote}
             whileTap={{ scale: 0.97 }}
           >
             {submitting
               ? <><Loader size={16} className="spin" /> Redirecting to Paystack…</>
-              : <><Shield size={16} /> Pay GH₵ {total.toLocaleString()} securely</>}
+              : <><Shield size={16} /> {quote ? `Pay ${ghs(total)} securely` : 'Pricing your cart…'}</>}
           </motion.button>
           <p className="muted small" style={{ textAlign: 'center', marginTop: 8 }}>
             Secured by Paystack · Funds held in escrow by sBay

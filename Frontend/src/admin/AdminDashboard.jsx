@@ -2,6 +2,27 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminApi } from '../api/client';
 
+// Clickable stat tile that deep-links into the relevant list page.
+// Defined at module level: declaring it inside the component remounted
+// every tile on each render.
+function Tile({ label, value, sub, onClick }) {
+  return (
+    <div
+      className="admin-stat"
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); }
+      }}
+    >
+      <span>{label}</span>
+      <h3>{value}</h3>
+      {sub && <small>{sub}</small>}
+    </div>
+  );
+}
+
 /**
  * Single-screen overview of the platform.
  *
@@ -25,21 +46,6 @@ export default function AdminDashboard() {
 
   const { users, products, orders, revenue, escrow, pendingVerifications, salesByDay } = data;
   const peakDay = (salesByDay || []).reduce((acc, d) => (d.gmv > (acc?.gmv || 0) ? d : acc), null);
-
-  // Clickable stat tile that deep-links into the relevant list page.
-  const Tile = ({ label, value, sub, onClick }) => (
-    <div
-      className="admin-stat"
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClick()}
-    >
-      <span>{label}</span>
-      <h3>{value}</h3>
-      {sub && <small>{sub}</small>}
-    </div>
-  );
 
   return (
     <>

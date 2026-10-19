@@ -306,14 +306,6 @@
 .order-meta h4 { font-size: 0.95rem; font-weight: 700; }
 .order-meta .price { color: var(--primary); font-weight: 800; display: block; margin-top: 2px; }
 
-/* btn-sm variant */
-.btn-sm {
-  padding: 6px 12px;
-  font-size: 0.8rem;
-  min-height: 0;
-}
-
-
 .order-side {
   display: flex;
   flex-direction: column;
@@ -324,24 +316,9 @@
 .order-side .btn { padding: 8px 14px; font-size: 0.82rem; }
 .order-side .btn.small { padding: 6px 12px; font-size: 0.78rem; }
 
-/* Status chips */
-.status {
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: .06em;
-  padding: 4px 10px;
-  border-radius: var(--r-pill);
-  text-transform: uppercase;
-}
-.status.in_escrow { background: #fff5e6; color: #B97A0A; }
-.status.pending { background: #fff8e6; color: #6b4d00; }
-.status.processing { background: #e6f3ff; color: #0066B3; }
-.status.shipped { background: #e0f2f7; color: #07697e; }
-.status.shipping { background: #e6f3ff; color: #0066B3; }
-.status.delivered { background: #e7f6ee; color: #1e7d3b; }
-.status.completed { background: var(--primary-50); color: var(--primary); }
-.status.canceled { background: #fde6e6; color: var(--error); }
-.status.placed { background: var(--surface-2); color: var(--text-muted); }
+/* Status chip colours live in index.css (.status.*) */
+.status.in_escrow { background: #FEF5E2; color: #9A6200; }
+.status.placed { background: var(--surface-3); color: var(--text-muted); }
 
 /* Wishlist */
 .wishlist-grid {
@@ -390,32 +367,9 @@
   box-shadow: 0 0 0 2px var(--primary);
 }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 12px;
-}
-.field span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-.field input, .field textarea {
-  padding: 10px 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  font-family: inherit;
-  font-size: 0.9rem;
-  background: #fff;
-  color: var(--text);
-  outline: none;
-  transition: border-color .15s ease;
-}
-.field input:focus, .field textarea:focus { border-color: var(--primary); }
+/* Base .field styles come from index.css; settings just adds spacing. */
+.settings-form .field { margin-top: 12px; }
+.settings-form .field > span { display: inline-flex; align-items: center; gap: 6px; }
 
 /* Modal/sheet (tracking + review) */
 .sheet-overlay {

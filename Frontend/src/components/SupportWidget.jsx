@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Headphones, MessageCircle, X, Send, Loader2, GripVertical, Mail, Phone } from 'lucide-react';
 import { useAuth } from '../store/AuthContext';
@@ -40,15 +40,17 @@ export default function SupportWidget() {
   const isGuest = !user;
 
   // ---- Drag state ----
+  // Kept in a ref: it changes on every pointer move and must not trigger
+  // renders (it used to be a mutated useState object).
   const [pos, setPos] = useState({ x: 0, y: 0 });
-  const dragState = useState({
+  const drag = useRef({
     dragging: false,
     startX: 0,
     startY: 0,
     startPosX: 0,
     startPosY: 0,
     moved: false,
-  })[0];
+  });
 
   useEffect(() => {
     if (user) {
@@ -63,32 +65,43 @@ export default function SupportWidget() {
 
   const onPointerDown = (e) => {
     if (e.button !== 0) return;
-    dragState.dragging = true;
-    dragState.startX = e.clientX;
-    dragState.startY = e.clientY;
-    dragState.startPosX = pos.x;
-    dragState.startPosY = pos.y;
-    dragState.moved = false;
+    drag.current = {
+      dragging: true,
+      startX: e.clientX,
+      startY: e.clientY,
+      startPosX: pos.x,
+      startPosY: pos.y,
+      moved: false,
+    };
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
   const onPointerMove = (e) => {
-    if (!dragState.dragging) return;
-    const dx = e.clientX - dragState.startX;
-    const dy = e.clientY - dragState.startY;
-    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) dragState.moved = true;
+    const d = drag.current;
+    if (!d.dragging) return;
+    const dx = e.clientX - d.startX;
+    const dy = e.clientY - d.startY;
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) d.moved = true;
     const maxX = window.innerWidth - 72;
     const maxY = window.innerHeight - 140;
     setPos({
-      x: clamp(dragState.startPosX + dx, 0, maxX),
-      y: clamp(dragState.startPosY + dy, -(maxY), 0),
+      x: clamp(d.startPosX + dx, 0, maxX),
+      y: clamp(d.startPosY + dy, -(maxY), 0),
     });
   };
 
   const onPointerUp = (e) => {
-    dragState.dragging = false;
+    drag.current.dragging = false;
     e.currentTarget.releasePointerCapture(e.pointerId);
-    if (!dragState.moved) setOpen((o) => !o);
+    if (!drag.current.moved) setOpen((o) => !o);
+  };
+
+  // The FAB is a div (for pointer capture), so give it button keyboard behaviour.
+  const onFabKey = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setOpen((o) => !o);
+    }
   };
 
   const validate = () => {
@@ -133,9 +146,11 @@ export default function SupportWidget() {
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
+        onKeyDown={onFabKey}
         role="button"
         tabIndex={0}
-        aria-label={open ? 'Close support form' : 'Open support form'}
+        aria-expanded={open}
+        aria-label={open ? 'Close support form' : 'Contact support'}
       >
         <GripVertical size={14} className="support-grip" />
         {open ? <X size={22} /> : <MessageCircle size={22} />}
@@ -176,7 +191,7 @@ export default function SupportWidget() {
             )}
 
             <label className="support-field">
-              <span>Gmail address *</span>
+              <span>Email address *</span>
               <div className={`support-input-wrap ${fieldErrors.email ? 'has-err' : ''}`}>
                 <Mail size={15} />
                 <input

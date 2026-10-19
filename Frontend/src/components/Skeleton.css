@@ -2,35 +2,9 @@
   display: inline-block;
   position: relative;
   overflow: hidden;
-  container-type: size;
-  background: linear-gradient(
-    90deg,
-    rgba(10, 126, 62, 0.06) 0%,
-    rgba(10, 126, 62, 0.14) 50%,
-    rgba(10, 126, 62, 0.06) 100%
-  );
+  background: linear-gradient(90deg, var(--surface-3) 0%, #E7EAE5 50%, var(--surface-3) 100%);
   background-size: 200% 100%;
   animation: skShimmer 1.4s ease-in-out infinite;
-}
-.sk::after {
-  content: 'sBay';
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  font-family: 'Urbanist', system-ui, sans-serif;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  /* Scale with the skeleton's own height so tiny bars stay unobtrusive */
-  font-size: min(35cqh, 1.4rem);
-  color: rgba(10, 126, 62, 0.32);
-  pointer-events: none;
-  user-select: none;
-  animation: skBrandPulse 1.8s ease-in-out infinite;
-}
-@keyframes skBrandPulse {
-  0%, 100% { opacity: 0.75; }
-  50%      { opacity: 1; }
 }
 @keyframes skShimmer {
   0%   { background-position: 200% 0; }
@@ -38,27 +12,31 @@
 }
 
 .sk-card {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
-  padding: 12px;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
+  padding-bottom: 12px;
 }
+.sk-card > .sk:first-child { aspect-ratio: 1 / 1; height: auto !important; border-radius: 0 !important; }
+.sk-card > .sk:not(:first-child) { margin-left: 12px; }
 .sk-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
-@media (max-width: 960px) { .sk-grid { grid-template-columns: repeat(3, 1fr); } }
-@media (max-width: 720px) { .sk-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 640px)  { .sk-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; } }
+@media (min-width: 961px)  { .sk-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; } }
+@media (min-width: 1280px) { .sk-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 
 .sk-row {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
 }

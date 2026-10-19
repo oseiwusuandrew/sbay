@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Crown, X, ArrowLeft as Back } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import BottomNav from '../components/BottomNav';
 import { useAuth } from '../store/AuthContext';
 import { useConfirm } from '../store/ConfirmContext';
-import { sbay } from '../api/client';
+import { sbay, api } from '../api/client';
 import './pages.css';
 import './Auth.css';
 import './ProductDetail.css';
@@ -63,11 +62,10 @@ const PAYMENT_METHODS = [
 ];
 
 export default function SellerSubscription() {
-  const navigate = useNavigate();
   const confirm = useConfirm();
-  const { user, subscribe, cancelSubscription } = useAuth();
+  const { user } = useAuth();
   const currentPlan = user?.subscription?.plan || 'free';
-  const status = user?.subscription?.status || 'free';
+  const status = currentPlan === 'free' ? 'free' : (user?.subscription?.status || 'active');
 
   const [plans, setPlans] = useState(FALLBACK_PLANS);
   const [pendingPlan, setPendingPlan] = useState(null);
@@ -104,30 +102,51 @@ export default function SellerSubscription() {
 
   const closeCheckout = () => { setPendingPlan(null); setBusy(false); setErr(''); };
 
+  /**
+   * Paid plans are activated by the sBay team for now (there is no
+   * recurring-billing integration yet). Instead of a fake "Pay" button
+   * that changed nothing server-side, we file the request in the admin
+   * support inbox, and the team follows up with payment details.
+   */
+  const requestPlan = async (planId, note) => {
+    const plan = plans.find((p) => p.id === planId);
+    await api.post('/support/tickets', {
+      name: user?.name,
+      email: user?.email,
+      phone: user?.phone || user?.payout?.account || 'n/a',
+      message: `[Plan request] ${user?.sellerProfile?.storeName || user?.name} wants the ${plan?.name || planId} plan `
+        + `(GH₵ ${Number(plan?.price || 0).toLocaleString()}/month). Preferred payment: ${PAYMENT_METHODS.find((m) => m.id === method)?.label || method}.`
+        + (note ? ` ${note}` : ''),
+    });
+  };
+
   const confirmSubscribe = async () => {
     setErr(''); setBusy(true);
     try {
-      await subscribe(pendingPlan, method);
+      await requestPlan(pendingPlan);
       setDone(true);
-      setTimeout(() => { setDone(false); setPendingPlan(null); }, 1600);
-    } catch (e) { setErr(e.message || 'Could not subscribe.'); }
+      setTimeout(() => { setDone(false); setPendingPlan(null); }, 2200);
+    } catch (e) { setErr(e.message || 'Could not send your request.'); }
     finally { setBusy(false); }
   };
 
   const onCancel = async () => {
     const ok = await confirm({
-      title: 'Cancel subscription?',
-      body: 'Your plan stays active until the end of the current billing period, then drops to Free.',
-      confirmLabel: 'Cancel plan',
+      title: 'Move to the Free plan?',
+      body: 'We will ask the sBay team to switch you to Free at the end of your current billing period.',
+      confirmLabel: 'Request downgrade',
       danger: true,
     });
     if (!ok) return;
-    await cancelSubscription();
+    try {
+      await requestPlan('free', 'Please downgrade at the end of the current period.');
+      setDone(true);
+      setTimeout(() => setDone(false), 2200);
+    } catch (e) { setErr(e.message || 'Could not send your request.'); }
   };
 
-  const renewsOn = user?.subscription?.renewsOn
-    ? new Date(user.subscription.renewsOn).toLocaleDateString()
-    : null;
+  const renewsAt = user?.subscription?.renewsAt || user?.subscription?.renewsOn;
+  const renewsOn = renewsAt ? new Date(renewsAt).toLocaleDateString() : null;
 
   const pendingDetails = plans.find((p) => p.id === pendingPlan);
 
@@ -143,8 +162,8 @@ export default function SellerSubscription() {
               You're on the {plans.find((p) => p.id === currentPlan)?.name || 'Free'} plan
             </strong>
             <p className="muted small">
-              {status === 'active' && renewsOn && `Renews on ${renewsOn} via ${user?.subscription?.method?.toUpperCase()}`}
-              {status === 'canceled' && renewsOn && `Cancels on ${renewsOn}. You will move to Free.`}
+              {status === 'active' && (renewsOn ? `Renews on ${renewsOn}.` : 'Your plan is active.')}
+              {status === 'canceled' && (renewsOn ? `Ends on ${renewsOn}. You will move to Free.` : 'Your plan has been canceled.')}
               {status === 'free' && 'Upgrade any time to unlock more listings, boosts and analytics.'}
             </p>
           </div>
@@ -184,7 +203,7 @@ export default function SellerSubscription() {
 
         {status === 'active' && currentPlan !== 'free' && (
           <button className="btn btn-ghost danger-text" onClick={onCancel}>
-            Cancel subscription
+            Downgrade to Free
           </button>
         )}
       </main>
@@ -208,17 +227,21 @@ export default function SellerSubscription() {
               transition={{ type: 'spring', stiffness: 320, damping: 32 }}
             >
               <header className="share-head">
-                <h3>Confirm {pendingDetails?.name} plan</h3>
+                <h3>Upgrade to {pendingDetails?.name}</h3>
                 <button onClick={closeCheckout} aria-label="Close"><X size={20} /></button>
               </header>
 
               <div className="sub-receipt">
                 <div className="row"><span>Plan</span><strong>{pendingDetails?.name}</strong></div>
                 <div className="row"><span>Billing</span><strong>Monthly</strong></div>
-                <div className="row total"><span>Total today</span><strong>GH₵ {Number(pendingDetails?.price || 0).toLocaleString()}</strong></div>
+                <div className="row total"><span>Price</span><strong>GH₵ {Number(pendingDetails?.price || 0).toLocaleString()}/month</strong></div>
               </div>
+              <p className="muted small" style={{ marginTop: 10 }}>
+                You won't be charged now. The sBay team will confirm your upgrade and send payment
+                details to {user?.email || 'your email'}. Your plan switches on once payment is received.
+              </p>
 
-              <h4 className="page-h2" style={{ marginTop: 16 }}>Payment method</h4>
+              <h4 className="page-h2" style={{ marginTop: 16 }}>Preferred payment method</h4>
               <div className="pay-methods">
                 {PAYMENT_METHODS.map((m) => (
                   <label key={m.id} className={`pay-method ${method === m.id ? 'active' : ''}`}>
@@ -241,7 +264,7 @@ export default function SellerSubscription() {
                   <Back size={16} /> Back
                 </button>
                 <button className="btn btn-primary" onClick={confirmSubscribe} disabled={busy}>
-                  {busy ? 'Processing…' : `Pay GH₵ ${Number(pendingDetails?.price || 0).toLocaleString()}`}
+                  {busy ? 'Sending…' : 'Request upgrade'}
                 </button>
               </div>
             </motion.div>
@@ -261,8 +284,8 @@ export default function SellerSubscription() {
               transition={{ type: 'spring', stiffness: 200, damping: 14 }}
             >
               <div className="checkmark"><Check size={36} color="#fff" /></div>
-              <h3>You're subscribed!</h3>
-              <p className="muted">Welcome to {pendingDetails?.name}.</p>
+              <h3>Request sent</h3>
+              <p className="muted">We'll email you within one business day to finish setting up your plan.</p>
             </motion.div>
           </motion.div>
         )}

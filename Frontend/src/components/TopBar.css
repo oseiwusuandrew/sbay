@@ -4,11 +4,11 @@
   z-index: 30;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 14px 18px;
-  background: rgba(244, 248, 238, 0.92);
+  gap: 12px;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(10, 126, 62, 0.06);
+  border-bottom: 1px solid var(--border);
 }
 .topbar-title {
   font-size: 1.05rem;
@@ -42,18 +42,19 @@
   display: flex;
   align-items: center;
   padding: 0 16px 0 42px;
-  border-radius: var(--r-pill);
-  background: #fff;
-  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-3);
+  border: 1px solid transparent;
   font-size: 0.92rem;
   text-align: left;
   cursor: pointer;
   transition: border-color .15s ease, box-shadow .15s ease;
 }
-.search-wrap:hover,
+.search-wrap:hover { border-color: var(--border-strong); }
 .search-wrap:focus-within {
   border-color: var(--primary);
-  box-shadow: 0 0 0 4px rgba(10, 126, 62, 0.08);
+  background: var(--surface);
+  box-shadow: var(--focus);
 }
 .search-wrap .search-icon {
   position: absolute;
@@ -152,21 +153,20 @@
 }
 
 @media (max-width: 720px) {
-  .topbar { gap: 8px; padding: 10px 10px 10px 0; }
+  .topbar { gap: 8px; padding: 8px 12px 8px 4px; }
   .topbar .sbay-logo-word { display: none; }
   .topbar-actions { gap: 6px; }
   .topbar-actions .avatar,
   .topbar-actions .icon-btn[aria-label="Cart"] { display: none; }
   .topbar .icon-btn {
-    width: 38px;
-    height: 38px;
-    background: #fff;
-    box-shadow: 0 6px 18px rgba(10, 60, 30, 0.08);
+    width: 40px;
+    height: 40px;
+    background: var(--surface);
   }
   .search-wrap {
     flex: 1;
     max-width: none;
-    height: 42px;
+    height: 44px;
     padding: 0 14px 0 38px;
     font-size: 0.88rem;
   }
@@ -179,14 +179,18 @@
 /* Hide TopBar on desktop unless it's carrying a back button for sub-pages. */
 @media (min-width: 961px) {
   .topbar:not(.has-back) { display: none; }
+  /* Desktop has the global nav; sub-pages keep a light back + title row. */
   .topbar.has-back {
     position: static;
     background: transparent;
+    backdrop-filter: none;
     border-bottom: none;
-    padding: 22px 28px 6px;
-    max-width: 1400px;
+    padding: 24px var(--gutter) 0;
+    max-width: var(--container);
+    width: 100%;
     margin: 0 auto;
   }
+  .topbar.has-back .topbar-title { font-size: var(--fs-2xl); font-weight: 800; letter-spacing: -0.02em; }
   .topbar.has-back .search-wrap,
   .topbar.has-back .topbar-actions { display: none; }
 }

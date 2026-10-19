@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import {
-  ArrowLeft, Star, Shield, MapPin, Send, Zap, BadgeCheck, Trophy, Clock, Loader2,
+  ArrowLeft, Star, MapPin, Send, BadgeCheck, Clock, Loader2,
 } from 'lucide-react';
+import ProductCard, { ProductGrid } from '../components/ProductCard';
 import { sbay } from '../api/client';
 import { useAuth } from '../store/AuthContext';
 import { Skeleton, SkeletonGrid } from '../components/Skeleton';
@@ -19,6 +19,7 @@ export default function SellerProfile() {
   const { user } = useAuth();
 
   const [seller, setSeller] = useState(null);
+  const [loadError, setLoadError] = useState('');
   const [tab, setTab] = useState('listings');
   const [reviewsState, setReviewsState] = useState({ items: [], total: 0, rating: 0 });
   const [reviewsLoading, setReviewsLoading] = useState(false);
@@ -28,14 +29,17 @@ export default function SellerProfile() {
 
   useEffect(() => {
     let alive = true;
+    setLoadError('');
     sbay.getSeller(id)
       .then((data) => {
         if (!alive) return;
         setSeller(data);
       })
-      .catch(() => {
+      .catch((e) => {
         if (!alive) return;
         setSeller(null);
+        // Previously the skeleton spun forever on any error.
+        setLoadError(e.status === 404 ? 'This seller could not be found.' : (e.message || 'Could not load this seller.'));
       });
     return () => { alive = false; };
   }, [id]);
@@ -127,6 +131,22 @@ export default function SellerProfile() {
     }
   };
 
+  if (!seller && loadError) {
+    return (
+      <div className="page">
+        <main className="page-main">
+          <button className="round-btn" onClick={() => navigate(-1)} aria-label="Back"><ArrowLeft size={20} /></button>
+          <div className="empty">
+            <h3>Seller unavailable</h3>
+            <p>{loadError}</p>
+            <button className="btn btn-primary" onClick={() => navigate('/home')}>Back to marketplace</button>
+          </div>
+        </main>
+        <BottomNav />
+      </div>
+    );
+  }
+
   if (!seller) {
     return (
       <div className="page sp">
@@ -164,8 +184,11 @@ export default function SellerProfile() {
           ) : (
             <span className="badge-soft is-pending"><Clock size={12} /> Pending review</span>
           )}
-          <span className="badge-soft"><Zap size={12} /> Fast replier</span>
-          <span className="badge-soft"><Trophy size={12} /> Top Seller</span>
+          {seller.createdAt && (
+            <span className="badge-soft">
+              <Clock size={12} /> On sBay since {new Date(seller.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+            </span>
+          )}
         </div>
       </div>
 
@@ -180,28 +203,25 @@ export default function SellerProfile() {
 
       <main className="page-main">
         {tab === 'listings' ? (
-          <div className="sp-grid">
-            {seller.listings.map((p, i) => (
-              <motion.article
-                key={p.id}
-                className="result-card"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04 }}
-                onClick={() => navigate(`/product/${p.id}`)}
-              >
-                <div className="result-img" style={{ backgroundImage: `url(${p.image})` }} />
-                <div className="result-body">
-                  <h4 className="prod-title">{p.title}</h4>
-                  <span className="price">GH₵ {p.price.toLocaleString()}</span>
-                </div>
-              </motion.article>
-            ))}
-          </div>
+          seller.listings.length === 0 ? (
+            <div className="empty">
+              <h3>No active listings</h3>
+              <p>This seller doesn't have anything for sale right now.</p>
+            </div>
+          ) : (
+            <ProductGrid>
+              {seller.listings.map((p) => (
+                <ProductCard key={p.id} p={{ ...p, sellerName: undefined }} />
+              ))}
+            </ProductGrid>
+          )
         ) : (
           <div className="sp-reviews">
             <form className="card review-form" onSubmit={submitReview}>
               <h4>Leave a review</h4>
+              <p className="muted small" style={{ margin: 0 }}>
+                Reviews are open to buyers who have received an order from this seller.
+              </p>
               <div className="rating-pick">
                 {[1, 2, 3, 4, 5].map((n) => (
                   <button
@@ -261,6 +281,7 @@ export default function SellerProfile() {
         )}
       </main>
       <Footer />
+      <BottomNav />
     </div>
   );
 }
