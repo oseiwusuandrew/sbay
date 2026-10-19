@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
+    "dev:local": "node scripts/dev-local.js",
     "seed:admin": "node src/seed/seedAdmin.js"
   },
   "engines": {
@@ -38,9 +39,11 @@
     "morgan": "^1.10.0",
     "nanoid": "^5.0.7",
     "nodemailer": "^8.0.9",
-    "socket.io": "^4.8.3"
+    "socket.io": "^4.8.3",
+    "validator": "^13.15.35"
   },
   "devDependencies": {
+    "mongodb-memory-server": "^10.4.3",
     "nodemon": "^3.1.4"
   }
 }

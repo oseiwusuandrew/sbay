@@ -5,16 +5,17 @@
 import { Server } from 'socket.io';
 import { verifyAccessToken } from './utils/jwt.js';
 import { User } from './models/User.js';
-import { env } from './config/env.js';
+import { env, isProd } from './config/env.js';
 
 let io = null;
 
+// Same policy as the HTTP CORS config in app.js, so sockets don't fail
+// in setups where the REST API works (e.g. NODE_ENV unset locally).
 function isAllowedOrigin(origin) {
   if (!origin) return true;
-  if (env.NODE_ENV === 'development' && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
-    return true;
-  }
-  return env.CORS_ORIGINS.includes(origin);
+  if (env.CORS_ORIGINS.length === 0) return !isProd;
+  if (env.CORS_ORIGINS.includes(origin)) return true;
+  return !isProd && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
 }
 
 /**

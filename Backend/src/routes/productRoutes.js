@@ -1,22 +1,22 @@
 import { Router } from 'express';
-import { body, param } from 'express-validator';
+import { body, param, query } from 'express-validator';
 import {
   listCatalogMeta, listProducts, getProduct, getHomeFeed, createProduct,
   updateProduct, deleteProduct, myListings, myListingStats,
 } from '../controllers/productController.js';
-import { requireAuth, requireRole } from '../middleware/auth.js';
+import { requireAuth, requireRole, optionalAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 
 const router = Router();
 
 router.get('/catalog', listCatalogMeta);
 router.get('/home', getHomeFeed);
-router.get('/', listProducts);
+router.get('/', query('seller').optional().isMongoId(), validate, listProducts);
 
 router.get('/mine', requireAuth, requireRole('seller'), myListings);
 router.get('/mine/stats', requireAuth, requireRole('seller'), myListingStats);
 
-router.get('/:id', param('id').isMongoId(), validate, getProduct);
+router.get('/:id', optionalAuth, param('id').isMongoId(), validate, getProduct);
 
 router.post(
   '/',
@@ -43,7 +43,7 @@ router.patch(
   body('price').optional().isFloat({ min: 0 }),
   body('discountPrice').optional().isFloat({ min: 0 }),
   body('stock').optional().isInt({ min: 0, max: 100000 }),
-  body('condition').optional().isIn(['Brand New', 'Like New', 'Slightly Used', 'Used Â· Fair']),
+  body('condition').optional().isIn(['Brand New', 'Like New', 'Slightly Used', 'Used · Fair']),
   body('category').optional().isString().trim().isLength({ min: 2, max: 60 }),
   body('images').optional().isArray({ max: 6 }),
   body('location').optional().isString().isLength({ max: 120 }),

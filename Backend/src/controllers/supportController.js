@@ -19,13 +19,13 @@ import { sendSupportReplyEmail } from '../utils/email.js';
  * a user double-tapping send doesn't create twins.
  */
 export const submitSupport = asyncHandler(async (req, res) => {
-  const { email, phone, message } = req.body;
+  const { email, phone, message, name } = req.body;
   if (!message?.trim()) throw new HttpError(400, 'Message is required.');
-  if (!email?.trim()) throw new HttpError(400, 'Gmail is required.');
+  if (!email?.trim()) throw new HttpError(400, 'Email is required.');
   if (!phone?.trim()) throw new HttpError(400, 'Contact number is required.');
 
   const lowerEmail = email.toLowerCase().trim();
-  const contactName = lowerEmail.split('@')[0] || 'Customer';
+  const contactName = req.user?.name || name?.trim() || lowerEmail.split('@')[0] || 'Customer';
   const trimmedMessage = message.trim();
 
   // Reuse an existing open ticket if the same email has one — keeps
@@ -54,7 +54,10 @@ export const submitSupport = asyncHandler(async (req, res) => {
   // Notify admins of new support ticket/message.
   emitToAdmins('support:new', { ticketId: ticket._id, subject: ticket.subject, email: ticket.email });
 
-  res.status(201).json({ ticket });
+  // Only acknowledge — the endpoint is public and keyed by email, so
+  // returning the ticket would let anyone read someone else's thread
+  // (including admin replies) just by knowing their address.
+  res.status(201).json({ ok: true, ticketId: ticket._id });
 });
 
 /* ============================================================

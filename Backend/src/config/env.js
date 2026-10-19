@@ -56,6 +56,10 @@ export const env = Object.freeze({
   PAYSTACK_CALLBACK_URL: process.env.PAYSTACK_CALLBACK_URL || 'http://localhost:5173/payment-success',
   FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
 
+  // Dev-only: lets /api/orders/checkout create orders without Paystack.
+  // Ignored when NODE_ENV=production.
+  ENABLE_MOCK_CHECKOUT: process.env.ENABLE_MOCK_CHECKOUT === 'true',
+
   // Email configuration
   EMAIL_USER: process.env.EMAIL_USER || '',
   EMAIL_PASS: process.env.EMAIL_PASS || '',

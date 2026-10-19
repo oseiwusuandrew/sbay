@@ -1,5 +1,6 @@
 import { Product } from '../models/Product.js';
 import { User } from '../models/User.js';
+import { Settings } from '../models/Settings.js';
 import { HttpError } from '../utils/httpError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
@@ -259,7 +260,18 @@ export const listProducts = asyncHandler(async (req, res) => {
     if (minPrice) filter.price.$gte = Number(minPrice);
     if (maxPrice) filter.price.$lte = Number(maxPrice);
   }
-  if (q) filter.$text = { $search: q };
+  if (q) {
+    // Substring match so partial words work ("iph" → iPhone); $text only
+    // matched whole stemmed words. Every term must appear somewhere.
+    const terms = String(q).trim().split(/\s+/).filter(Boolean).slice(0, 6);
+    const termClauses = terms.map((t) => {
+      const rx = new RegExp(escapeRegex(t), 'i');
+      return { $or: [{ title: rx }, { category: rx }, { description: rx }] };
+    });
+    if (termClauses.length) {
+      filter.$and = [...(filter.$and || []), ...termClauses];
+    }
+  }
 
   const sortMap = {
     recent:    { createdAt: -1 },
@@ -285,15 +297,26 @@ export const listProducts = asyncHandler(async (req, res) => {
   res.json({ items, total, page: Number(page), limit: lim });
 });
 
-/** GET /api/products/:id — single listing + bumps view count. */
+/**
+ * GET /api/products/:id — single listing + bumps view count.
+ * Hidden (moderated) listings are only visible to their owner and
+ * admins; the owner's own visits don't inflate the view counter.
+ */
 export const getProduct = asyncHandler(async (req, res) => {
-  const p = await Product.findOneAndUpdate(
-    { _id: req.params.id, status: { $ne: 'removed' } },
-    { $inc: { views: 1 } },
-    { new: true }
-  ).populate('seller', 'name avatar sellerProfile verified location createdAt');
-
+  const p = await Product.findOne({ _id: req.params.id, status: { $ne: 'removed' } })
+    .populate('seller', 'name avatar sellerProfile verified location createdAt');
   if (!p) throw new HttpError(404, 'Product not found');
+
+  const viewerId = req.user?._id?.toString();
+  const isOwner = viewerId && p.seller?._id?.toString() === viewerId;
+  if (p.status === 'hidden' && !isOwner && req.user?.role !== 'admin') {
+    throw new HttpError(404, 'Product not found');
+  }
+
+  if (!isOwner) {
+    await Product.updateOne({ _id: p._id }, { $inc: { views: 1 } });
+    p.views = (p.views || 0) + 1;
+  }
   res.json({ product: p });
 });
 
@@ -301,6 +324,12 @@ export const getProduct = asyncHandler(async (req, res) => {
 export const createProduct = asyncHandler(async (req, res) => {
   const seller = req.user;
   if (seller.role !== 'seller') throw new HttpError(403, 'Only sellers can create listings');
+
+  // The onboarding fee used to be enforced only by the React page.
+  const settings = await Settings.getSingleton();
+  if (Number(settings.sellerOnboardingFee || 0) > 0 && !seller.onboardingFeePaid) {
+    throw new HttpError(402, 'Please pay the one-time seller onboarding fee before listing items.');
+  }
 
   const {
     title, description, price, discountPrice,
@@ -339,6 +368,7 @@ export const createProduct = asyncHandler(async (req, res) => {
     title, description,
     price, discountPrice,
     stock: stock ?? 1,
+    status: stock === 0 ? 'sold_out' : 'active',
     condition, category,
     images: Array.isArray(images) ? images : [],
     location: location || seller.sellerProfile?.location || seller.location,
@@ -380,6 +410,7 @@ export const updateProduct = asyncHandler(async (req, res) => {
     throw new HttpError(409, 'You already have this exact product listed. Please edit the existing listing instead.');
   }
   if (product.stock > 0 && product.status === 'sold_out') product.status = 'active';
+  if (product.stock === 0 && product.status === 'active') product.status = 'sold_out';
   await product.save();
 
   invalidateCatalogCache();

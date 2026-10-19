@@ -1,14 +1,15 @@
 import mongoose from 'mongoose';
 import { Order } from '../models/Order.js';
 import { Product } from '../models/Product.js';
-import { Plan } from '../models/Plan.js';
-import { Settings } from '../models/Settings.js';
 import { Chat } from '../models/Chat.js';
 import { User } from '../models/User.js';
 import { HttpError } from '../utils/httpError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { emitToAdmins, emitToUser } from '../socket.js';
-import { sendOrderStatusEmail, sendNewOrderEmail, sendSMS } from '../utils/email.js';
+import { emitToUser } from '../socket.js';
+import { sendOrderStatusEmail, sendSMS } from '../utils/email.js';
+import { quoteCart } from '../utils/pricing.js';
+import { notifyNewOrders, ghs } from '../utils/orderNotify.js';
+import { env, isProd } from '../config/env.js';
 
 /**
  * Atomically reserve `qty` units of a product. Returns the updated
@@ -26,114 +27,76 @@ async function reserveStock(productId, qty, session) {
   );
 }
 
-async function restoreStock(productId, qty, session) {
-  return Product.findOneAndUpdate(
+/** Put units back on the shelf; a sold-out listing becomes buyable again. */
+export async function restoreStock(productId, qty, session) {
+  const p = await Product.findOneAndUpdate(
     { _id: productId },
     { $inc: { stock: qty, sold: -qty } },
     { new: true, session }
   );
+  if (!p) return p;
+  let dirty = false;
+  if (p.status === 'sold_out' && p.stock > 0) { p.status = 'active'; dirty = true; }
+  if (p.sold < 0) { p.sold = 0; dirty = true; }
+  if (dirty) await p.save({ session });
+  return p;
 }
+
+// Sellers move an order forward through these steps, never backwards.
+const SELLER_FLOW = ['pending', 'processing', 'shipped', 'delivered'];
 
 function pushTimeline(order, actor, kind, detail) {
   order.timeline.push({ at: new Date(), actor, kind, detail });
 }
 
 /**
- * POST /api/orders/checkout
+ * POST /api/orders/checkout — DEVELOPMENT ONLY.
  *
- * Body: { items: [{ productId, qty }], paymentMethod: { brand, last4, holder } }
- *
- * Flow:
- *   1. Pull each product, validate qty/stock.
- *   2. Atomically decrement stock per product. Any failure → rollback.
- *   3. Group items by seller into one Order each (so one cart can spin
- *      up multiple orders if it spans sellers).
- *   4. Compute fee from the seller's current plan (or platform default).
- *   5. Mark each Order as paid + escrow held.
+ * Creates paid, escrow-held orders without taking any money. The real
+ * flow is /api/payments/initialize → Paystack → /api/payments/verify.
+ * Left reachable in production, this let any signed-in user "buy"
+ * anything for free, so it now only works outside production and only
+ * when ENABLE_MOCK_CHECKOUT=true.
  */
 export const checkout = asyncHandler(async (req, res) => {
+  if (isProd || !env.ENABLE_MOCK_CHECKOUT) {
+    throw new HttpError(404, 'Route not found');
+  }
+
   const { items, payment } = req.body;
-  if (!Array.isArray(items) || items.length === 0) {
-    throw new HttpError(400, 'Cart is empty');
-  }
-
-  // Sanity-clamp quantities — a defence-in-depth guard. Validators on
-  // the route also reject these, but we never want to be the system
-  // that processes "qty: -3".
-  for (const it of items) {
-    if (!Number.isInteger(it.qty) || it.qty < 1) {
-      throw new HttpError(400, 'Quantity must be a positive whole number');
-    }
-  }
-
   const session = await mongoose.startSession();
-  const orders = [];
+  let orders = [];
 
   try {
     await session.withTransaction(async () => {
-      // 1. Load products, group by seller
-      const productIds = items.map((i) => i.productId);
-      const products = await Product.find({ _id: { $in: productIds } }).session(session);
-      const productMap = new Map(products.map((p) => [p._id.toString(), p]));
+      orders = [];
+      const quote = await quoteCart(items, req.user._id, { session });
 
-      // 2. Reserve stock atomically (per item). On failure we rollback.
-      const reserved = [];
-      for (const it of items) {
-        const product = productMap.get(it.productId);
-        if (!product) throw new HttpError(404, `Listing not found: ${it.productId}`);
-        if (product.status !== 'active') throw new HttpError(409, `${product.title} is no longer available`);
-        if (product.seller.toString() === req.user._id.toString()) {
-          throw new HttpError(400, 'You cannot buy your own listing');
+      for (const group of quote.groups) {
+        for (const { product, qty } of group.lines) {
+          const updated = await reserveStock(product._id, qty, session);
+          if (!updated) throw new HttpError(409, `Sorry — "${product.title}" just sold out.`);
+          if (updated.stock === 0) {
+            updated.status = 'sold_out';
+            await updated.save({ session });
+          }
         }
-
-        const updated = await reserveStock(product._id, it.qty, session);
-        if (!updated) {
-          throw new HttpError(409, `Sorry — only ${product.stock} of "${product.title}" left.`);
-        }
-        // If we just sold the last unit, mark sold_out.
-        if (updated.stock === 0) {
-          updated.status = 'sold_out';
-          await updated.save({ session });
-        }
-        reserved.push({ product, updated, qty: it.qty });
-      }
-
-      // 3. Group by seller
-      const settings = await Settings.getSingleton();
-      const groups = new Map();
-      for (const r of reserved) {
-        const sid = r.product.seller.toString();
-        if (!groups.has(sid)) groups.set(sid, []);
-        groups.get(sid).push(r);
-      }
-
-      // 4. Build one Order per seller
-      for (const [sellerId, group] of groups.entries()) {
-        const sellerUser = await User.findById(sellerId).session(session);
-        let feePct = settings.defaultEscrowFeePct;
-        if (sellerUser?.subscription?.plan) {
-          const plan = await Plan.findOne({ code: sellerUser.subscription.plan }).session(session);
-          if (plan) feePct = plan.feePct;
-        }
-
-        const subtotal = group.reduce((s, g) => s + g.product.price * g.qty, 0);
-        const fee = Math.round(subtotal * feePct) / 100;
-        const total = subtotal + fee;
-
-        const orderItems = group.map((g) => ({
-          product: g.product._id,
-          title: g.product.title,
-          image: g.product.images?.[0],
-          price: g.product.price,
-          qty: g.qty,
-          seller: g.product.seller,
-        }));
 
         const [order] = await Order.create([{
           buyer: req.user._id,
-          seller: sellerUser._id,
-          items: orderItems,
-          subtotal, feePct, fee, total,
+          seller: group.sellerId,
+          items: group.lines.map(({ product, qty }) => ({
+            product: product._id,
+            title: product.title,
+            image: product.images?.[0],
+            price: product.price,
+            qty,
+            seller: product.seller,
+          })),
+          subtotal: group.subtotal,
+          feePct: group.feePct,
+          fee: group.fee,
+          total: group.total,
           method: 'escrow',
           status: 'pending',
           escrow: { status: 'held', heldAt: new Date() },
@@ -144,20 +107,19 @@ export const checkout = asyncHandler(async (req, res) => {
             cardLast4: payment?.last4,
             paidAt: new Date(),
           },
-          deliveryLocation: req.user.location,
+          deliveryLocation: req.body.deliveryLocation || req.user.location,
           timeline: [{
             at: new Date(),
             actor: req.user._id,
             kind: 'created',
-            detail: 'Order placed; funds held in escrow.',
+            detail: 'Order placed (mock payment); funds held in escrow.',
           }],
         }], { session });
 
-        // Open / extend the buyer↔seller chat, attaching this order.
         await Chat.findOneAndUpdate(
-          { buyer: req.user._id, seller: sellerUser._id },
+          { buyer: req.user._id, seller: group.sellerId },
           {
-            $setOnInsert: { buyer: req.user._id, seller: sellerUser._id },
+            $setOnInsert: { buyer: req.user._id, seller: group.sellerId },
             $set: { closed: false, closedAt: null, closedReason: null },
             $addToSet: { orders: order._id },
           },
@@ -171,55 +133,7 @@ export const checkout = asyncHandler(async (req, res) => {
     session.endSession();
   }
 
-  // Notify admins + each seller in real time.
-  emitToAdmins('order:new', {
-    count: orders.length,
-    total: orders.reduce((s, o) => s + (o.total || 0), 0),
-    message: `${orders.length} new order${orders.length === 1 ? '' : 's'} just came in.`,
-  });
-  
-  // Send emails and SMS to buyer and sellers
-  for (const o of orders) {
-    if (o.seller) {
-      emitToUser(o.seller.toString(), 'order:new', { orderId: o._id });
-      
-      // Load full seller and buyer details for emails
-      const sellerUser = await User.findById(o.seller);
-      const buyerUser = await User.findById(o.buyer);
-      
-      if (sellerUser) {
-        // Email seller about new order
-        await sendNewOrderEmail(sellerUser, o).catch(err => 
-          console.error(`Failed to send new order email to seller:`, err)
-        );
-        
-        // SMS seller about new order
-        if (sellerUser.phone) {
-          await sendSMS(
-            sellerUser.phone,
-            `New order ${o.invoiceNumber}! You received GH₵ ${o.total.toLocaleString()} (held in escrow). Check sBay to process it.`
-          ).catch(err => console.error(`Failed to send SMS to seller:`, err));
-        }
-      }
-      
-      if (buyerUser) {
-        // Email buyer order confirmation
-        await sendOrderStatusEmail(buyerUser, o, 'pending').catch(err =>
-          console.error(`Failed to send order confirmation to buyer:`, err)
-        );
-        
-        // SMS buyer order confirmation
-        if (buyerUser.phone) {
-          await sendSMS(
-            buyerUser.phone,
-            `Order ${o.invoiceNumber} placed successfully! Total: GH₵ ${o.total.toLocaleString()}. Track it on sBay.`
-          ).catch(err => console.error(`Failed to send SMS to buyer:`, err));
-        }
-      }
-    }
-    if (o.buyer) emitToUser(o.buyer.toString(), 'order:new', { orderId: o._id });
-  }
-
+  notifyNewOrders(orders).catch((e) => console.error('[orders] notify failed', e));
   res.status(201).json({ orders });
 });
 
@@ -235,7 +149,7 @@ export const myOrders = asyncHandler(async (req, res) => {
 export const mySales = asyncHandler(async (req, res) => {
   const orders = await Order.find({ seller: req.user._id })
     .sort({ createdAt: -1 })
-    .populate('buyer', 'name avatar location');
+    .populate('buyer', 'name avatar location phone');
   res.json({ orders });
 });
 
@@ -247,15 +161,19 @@ export const getOrder = asyncHandler(async (req, res) => {
   if (!o) throw new HttpError(404, 'Order not found');
   const uid = req.user._id.toString();
   const allowed = (
-    o.buyer._id.toString() === uid ||
-    o.seller._id.toString() === uid ||
+    o.buyer?._id?.toString() === uid ||
+    o.seller?._id?.toString() === uid ||
     req.user.role === 'admin'
   );
   if (!allowed) throw new HttpError(403, 'Forbidden');
   res.json({ order: o });
 });
 
-const ALLOWED_BY_SELLER = new Set(['processing', 'shipped', 'delivered']);
+const STATUS_SMS = {
+  processing: 'Your order is being prepared',
+  shipped: 'Your order is on its way',
+  delivered: 'Your order has been delivered! Please confirm receipt on sBay',
+};
 
 /**
  * PATCH /api/orders/:id/status — seller-driven status transitions.
@@ -268,40 +186,35 @@ export const updateStatusBySeller = asyncHandler(async (req, res) => {
   if (o.seller.toString() !== req.user._id.toString()) {
     throw new HttpError(403, 'Only the seller can change this order');
   }
-  if (!ALLOWED_BY_SELLER.has(status)) {
-    throw new HttpError(400, `Sellers may only transition to: ${[...ALLOWED_BY_SELLER].join(', ')}`);
-  }
-  if (['completed', 'canceled'].includes(o.status)) {
+  if (['completed', 'canceled'].includes(o.status) || o.escrow?.status !== 'held') {
     throw new HttpError(409, 'Order is already finalised');
   }
+  const from = SELLER_FLOW.indexOf(o.status);
+  const to = SELLER_FLOW.indexOf(status);
+  if (to < 1) {
+    throw new HttpError(400, `Sellers may only set: ${SELLER_FLOW.slice(1).join(', ')}`);
+  }
+  if (to <= from) {
+    throw new HttpError(409, `This order is already ${o.status}.`);
+  }
+
   o.status = status;
   if (status === 'delivered') o.sellerConfirmedDelivery = true;
   pushTimeline(o, req.user._id, 'status', `Seller set status to ${status}`);
   await o.save();
   await maybeCloseChat(o);
-  emitToUser(o.buyer.toString(), 'order:updated', { orderId: o._id, status: o.status, href: '/profile?tab=orders' });
-  
-  // Send email and SMS notifications to buyer
+  emitToUser(o.buyer.toString(), 'order:updated', { orderId: o._id, status: o.status, href: '/profile/orders' });
+
   const buyerUser = await User.findById(o.buyer);
   if (buyerUser) {
-    await sendOrderStatusEmail(buyerUser, o, status).catch(err =>
-      console.error(`Failed to send order status email:`, err)
-    );
-    
+    await sendOrderStatusEmail(buyerUser, o, status).catch((err) =>
+      console.error('Failed to send order status email:', err));
     if (buyerUser.phone) {
-      const statusMsg = {
-        processing: 'Your order is being prepared',
-        shipped: 'Your order has been shipped',
-        delivered: 'Your order has been delivered! Please confirm receipt on sBay',
-      }[status] || `Order status: ${status}`;
-      
-      await sendSMS(
-        buyerUser.phone,
-        `Order ${o.invoiceNumber}: ${statusMsg}`
-      ).catch(err => console.error(`Failed to send SMS:`, err));
+      await sendSMS(buyerUser.phone, `Order ${o.invoiceNumber}: ${STATUS_SMS[status]}`)
+        .catch((err) => console.error('Failed to send SMS:', err));
     }
   }
-  
+
   res.json({ order: o });
 });
 
@@ -310,45 +223,58 @@ export const updateStatusBySeller = asyncHandler(async (req, res) => {
  * Releases escrow and marks order completed.
  */
 export const buyerConfirmReceipt = asyncHandler(async (req, res) => {
-  const o = await Order.findById(req.params.id);
-  if (!o) throw new HttpError(404, 'Order not found');
-  if (o.buyer.toString() !== req.user._id.toString()) {
-    throw new HttpError(403, 'Only the buyer can confirm receipt');
+  // Atomic flip so a double-tap can't release twice or race a cancel.
+  const o = await Order.findOneAndUpdate(
+    {
+      _id: req.params.id,
+      buyer: req.user._id,
+      'escrow.status': 'held',
+      status: { $nin: ['completed', 'canceled'] },
+    },
+    {
+      $set: {
+        buyerConfirmedReceipt: true,
+        status: 'completed',
+        'escrow.status': 'released',
+        'escrow.releasedAt': new Date(),
+        'escrow.releasedBy': req.user._id,
+      },
+      $push: {
+        timeline: { at: new Date(), actor: req.user._id, kind: 'escrow', detail: 'Buyer confirmed receipt; escrow released to seller.' },
+      },
+    },
+    { new: true }
+  );
+  if (!o) {
+    const exists = await Order.findById(req.params.id).select('buyer');
+    if (!exists) throw new HttpError(404, 'Order not found');
+    if (exists.buyer.toString() !== req.user._id.toString()) {
+      throw new HttpError(403, 'Only the buyer can confirm receipt');
+    }
+    throw new HttpError(409, 'This order has already been completed or canceled');
   }
-  if (o.escrow.status !== 'held') {
-    throw new HttpError(409, 'Escrow is not in a held state');
-  }
-  o.buyerConfirmedReceipt = true;
-  o.status = 'completed';
-  o.escrow.status = 'released';
-  o.escrow.releasedAt = new Date();
-  o.escrow.releasedBy = req.user._id;
-  pushTimeline(o, req.user._id, 'escrow', 'Buyer confirmed receipt; escrow released to seller.');
-  await o.save();
+
   await maybeCloseChat(o);
-  emitToUser(o.seller.toString(), 'order:updated', { orderId: o._id, status: o.status, href: '/seller-dashboard?tab=sales' });
-  
-  // Notify seller about payment release
+  emitToUser(o.seller.toString(), 'order:updated', { orderId: o._id, status: o.status, href: '/seller-dashboard/sales' });
+
   const sellerUser = await User.findById(o.seller);
   if (sellerUser) {
-    await sendOrderStatusEmail(sellerUser, o, 'completed').catch(err =>
-      console.error(`Failed to send completion email to seller:`, err)
-    );
-    
+    await sendOrderStatusEmail(sellerUser, o, 'completed').catch((err) =>
+      console.error('Failed to send completion email to seller:', err));
     if (sellerUser.phone) {
       await sendSMS(
         sellerUser.phone,
-        `Payment released! Order ${o.invoiceNumber} completed. GH₵ ${o.total.toLocaleString()} is now available.`
-      ).catch(err => console.error(`Failed to send SMS:`, err));
+        `Payment released! Order ${o.invoiceNumber} is complete. ${ghs(o.subtotal)} is now yours.`
+      ).catch((err) => console.error('Failed to send SMS:', err));
     }
   }
-  
+
   res.json({ order: o });
 });
 
 /**
- * POST /api/orders/:id/cancel — only valid before processing/shipping
- * starts. Restores stock, refunds escrow.
+ * POST /api/orders/:id/cancel — only valid before the order ships.
+ * Restores stock and marks escrow refunded.
  */
 export const cancelOrder = asyncHandler(async (req, res) => {
   const o = await Order.findById(req.params.id);
@@ -361,7 +287,7 @@ export const cancelOrder = asyncHandler(async (req, res) => {
   try {
     await session.withTransaction(async () => {
       const updated = await Order.findOneAndUpdate(
-        { _id: req.params.id, status: { $in: ['pending', 'processing'] } },
+        { _id: req.params.id, status: { $in: ['pending', 'processing'] }, 'escrow.status': 'held' },
         {
           $set: {
             status: 'canceled',
@@ -377,7 +303,7 @@ export const cancelOrder = asyncHandler(async (req, res) => {
         { new: true, session }
       );
       if (!updated) {
-        throw new HttpError(409, 'Cannot cancel — the order is already finalised or was modified concurrently.');
+        throw new HttpError(409, 'This order can no longer be canceled — it has already shipped or been finalised.');
       }
       for (const it of updated.items) {
         await restoreStock(it.product, it.qty, session);
@@ -388,58 +314,54 @@ export const cancelOrder = asyncHandler(async (req, res) => {
   }
 
   const result = await Order.findById(req.params.id);
-  
-  // Notify both parties about cancellation
-  const buyerUser = await User.findById(result.buyer);
-  const sellerUser = await User.findById(result.seller);
-  
+  await maybeCloseChat(result);
+
+  const [buyerUser, sellerUser] = await Promise.all([
+    User.findById(result.buyer),
+    User.findById(result.seller),
+  ]);
+  const other = (u) => u && u._id.toString() !== uid;
+  if (other(buyerUser)) emitToUser(buyerUser._id.toString(), 'order:updated', { orderId: result._id, status: 'canceled', href: '/profile/orders' });
+  if (other(sellerUser)) emitToUser(sellerUser._id.toString(), 'order:updated', { orderId: result._id, status: 'canceled', href: '/seller-dashboard/sales' });
+
   if (buyerUser) {
-    await sendOrderStatusEmail(buyerUser, result, 'canceled').catch(err =>
-      console.error(`Failed to send cancellation email to buyer:`, err)
-    );
+    await sendOrderStatusEmail(buyerUser, result, 'canceled').catch((err) =>
+      console.error('Failed to send cancellation email to buyer:', err));
     if (buyerUser.phone) {
-      await sendSMS(
-        buyerUser.phone,
-        `Order ${result.invoiceNumber} has been canceled. Your payment has been refunded.`
-      ).catch(err => console.error(`Failed to send SMS:`, err));
+      await sendSMS(buyerUser.phone, `Order ${result.invoiceNumber} has been canceled. Your payment will be refunded.`)
+        .catch((err) => console.error('Failed to send SMS:', err));
     }
   }
-  
   if (sellerUser) {
-    await sendOrderStatusEmail(sellerUser, result, 'canceled').catch(err =>
-      console.error(`Failed to send cancellation email to seller:`, err)
-    );
+    await sendOrderStatusEmail(sellerUser, result, 'canceled').catch((err) =>
+      console.error('Failed to send cancellation email to seller:', err));
     if (sellerUser.phone) {
-      await sendSMS(
-        sellerUser.phone,
-        `Order ${result.invoiceNumber} has been canceled. Payment refunded to buyer.`
-      ).catch(err => console.error(`Failed to send SMS:`, err));
+      await sendSMS(sellerUser.phone, `Order ${result.invoiceNumber} has been canceled. The buyer will be refunded.`)
+        .catch((err) => console.error('Failed to send SMS:', err));
     }
   }
-  
+
   res.json({ order: result });
 });
 
 /**
- * Close the buyer↔seller chat once every linked order has dual
- * confirmation (delivered + received). The chat reopens automatically
- * if a fresh order is later placed (see checkout flow).
+ * Close the buyer↔seller chat once every linked order is finished:
+ * either dual-confirmed (delivered + received) or canceled. The chat
+ * reopens automatically when a fresh order is placed.
  */
 async function maybeCloseChat(order) {
   const chat = await Chat.findOne({ buyer: order.buyer, seller: order.seller });
   if (!chat || chat.closed) return;
-  const linked = await Order.find({
-    _id: { $in: chat.orders },
-    status: { $nin: ['canceled'] },
-  });
+  const linked = await Order.find({ _id: { $in: chat.orders } })
+    .select('status buyerConfirmedReceipt sellerConfirmedDelivery');
   if (linked.length === 0) return;
-  const allDualConfirmed = linked.every(
-    (o) => o.buyerConfirmedReceipt && o.sellerConfirmedDelivery
-  );
-  if (allDualConfirmed) {
+  const allDone = linked.every((o) =>
+    o.status === 'canceled' || (o.buyerConfirmedReceipt && o.sellerConfirmedDelivery));
+  const anyDelivered = linked.some((o) => o.status !== 'canceled');
+  if (allDone) {
     chat.closed = true;
     chat.closedAt = new Date();
-    chat.closedReason = 'Dual confirmation on all orders';
+    chat.closedReason = anyDelivered ? 'All orders completed' : 'All orders canceled';
     await chat.save();
   }
 }

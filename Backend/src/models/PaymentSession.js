@@ -20,10 +20,13 @@ const paymentSessionSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ['pending', 'processing', 'paid', 'failed'],
+      // needs_refund: charged by Paystack but could not be fulfilled
+      // (e.g. sold out mid-payment) — an admin must refund it.
+      enum: ['pending', 'processing', 'paid', 'failed', 'needs_refund'],
       default: 'pending',
       index: true,
     },
+    failureReason: String,
 
     orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
 

@@ -97,6 +97,7 @@ router.post(
 );
 router.post(
   '/orders/:id/refund-escrow',
+  adminMutationLimiter,
   param('id').isMongoId(),
   body('reason').isString().isLength({ min: 2, max: 500 }),
   validate, refundEscrow
@@ -122,8 +123,9 @@ router.patch(
   '/settings',
   adminMutationLimiter,
   body('platformName').optional().isString().isLength({ max: 60 }),
-  body('defaultEscrowFeePct').optional().isFloat({ min: 0, max: 100 }),
-  body('supportEmail').optional().isString(),
+  body('defaultEscrowFeePct').optional().isFloat({ min: 0, max: 100 }).toFloat(),
+  body('sellerOnboardingFee').optional().isFloat({ min: 0, max: 100000 }).toFloat(),
+  body('supportEmail').optional({ values: 'falsy' }).isEmail(),
   body('announcement').optional().isString().isLength({ max: 500 }),
   body('maintenanceMode').optional().isBoolean(),
   validate, updateSettings

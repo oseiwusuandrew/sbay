@@ -6,6 +6,7 @@ import { emitToAdmins } from '../socket.js';
 import { env } from '../config/env.js';
 import { sendPasswordResetEmail, sendWelcomeEmail } from '../utils/email.js';
 import crypto from 'crypto';
+import validator from 'validator';
 
 function hashResetToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -130,47 +131,49 @@ export const resetPasswordWithToken = asyncHandler(async (req, res) => {
 });
 
 export const googleAuth = asyncHandler(async (req, res) => {
-  const { accessToken, role } = req.body;
-  if (!accessToken) throw new HttpError(400, 'Google access token is required');
+  const { accessToken } = req.body;
+  if (!accessToken || typeof accessToken !== 'string') throw new HttpError(400, 'Google access token is required');
 
-  let googleId, email, name, picture;
+  let info;
   try {
     const resp = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     if (!resp.ok) throw new Error('userinfo fetch failed');
-    const info = await resp.json();
-    if (!info.email_verified) throw new HttpError(400, 'Your Google email is not verified. Please verify it first.');
-    googleId = info.sub;
-    email = info.email;
-    name = info.name;
-    picture = info.picture;
+    info = await resp.json();
   } catch {
     throw new HttpError(401, 'Invalid Google access token');
   }
-  if (!email) throw new HttpError(400, 'Google account has no email');
+  if (!info?.email) throw new HttpError(400, 'Google account has no email');
+  if (!info.email_verified) throw new HttpError(400, 'Your Google email is not verified. Please verify it first.');
 
-  const wantsSeller = role === 'seller';
-  let user = await User.findOne({ $or: [{ googleId }, { email: email.toLowerCase() }] });
+  const { sub: googleId, name, picture } = info;
+  const email = info.email.toLowerCase();
+  // Email sign-ups are stored via express-validator's normalizeEmail
+  // (which strips dots from Gmail addresses), so look up both forms or a
+  // returning user gets a duplicate account / duplicate-key error.
+  const normalized = validator.normalizeEmail(email) || email;
+
+  // NOTE: the client-sent `role` is ignored. Becoming a seller must go
+  // through /users/me/become-seller (payout details, verification and the
+  // onboarding fee) — the frontend routes sellers there after sign-in.
+  let user = await User.findOne({ $or: [{ googleId }, { email: { $in: [email, normalized] } }] });
 
   if (user) {
+    if (user.restricted) throw new HttpError(403, 'Account is restricted', { reason: user.restrictReason });
     if (!user.googleId) {
       user.googleId = googleId;
       if (!user.avatar && picture) user.avatar = picture;
     }
-    if (wantsSeller && user.role !== 'admin') {
-      user.role = 'seller';
-    }
-    if (user.restricted) throw new HttpError(403, 'Account is restricted', { reason: user.restrictReason });
     user.lastLoginAt = new Date();
     await user.save();
   } else {
     user = await User.create({
       name: name?.trim() || email.split('@')[0],
-      email: email.toLowerCase(),
+      email: normalized,
       googleId,
       avatar: picture || undefined,
-      role: wantsSeller ? 'seller' : 'buyer',
+      role: 'buyer',
     });
     
     // Send welcome email for new Google sign-ups

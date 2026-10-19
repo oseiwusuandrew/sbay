@@ -294,6 +294,21 @@ npm run dev
 
 The frontend will start on `http://localhost:5173`
 
+### ⚡ Quick local sandbox (no database or Paystack needed)
+
+```bash
+cd Backend
+npm run dev:local
+```
+
+This boots the real API against a throwaway in-memory MongoDB replica set
+(downloaded once by `mongodb-memory-server`, ~600 MB) seeded with sample
+listings and test accounts (`buyer@sbay.test`, `ama@sbay.test`,
+`kojo@sbay.test`, `admin@sbay.test` — password `sbay-dev-pass`). Nothing
+persists between runs. `ENABLE_MOCK_CHECKOUT` is on in this mode so
+`/api/orders/checkout` can create orders without Paystack; it is ignored
+when `NODE_ENV=production`.
+
 ### 4️⃣ Access the Application
 
 - **User App**: http://localhost:5173

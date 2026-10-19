@@ -12,6 +12,8 @@ import { signAccessToken } from '../utils/jwt.js';
 import { HttpError } from '../utils/httpError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { audit } from '../utils/audit.js';
+import { restoreStock } from './orderController.js';
+import { invalidateCatalogCache } from './productController.js';
 
 /* ----------------------- Admin Auth ----------------------- */
 
@@ -230,6 +232,17 @@ export const deleteUser = asyncHandler(async (req, res) => {
     if (remaining < 1) throw new HttpError(400, 'Cannot delete the last admin.');
   }
 
+  // The cascade below wipes orders on BOTH sides. If money is still held
+  // in escrow for any of them, deleting would destroy the only record of
+  // who is owed what — the other party would lose their purchase/payout.
+  const heldOrders = await Order.countDocuments({
+    $or: [{ buyer: target._id }, { seller: target._id }],
+    'escrow.status': 'held',
+  });
+  if (heldOrders > 0) {
+    throw new HttpError(409, `This user has ${heldOrders} order(s) with funds still in escrow. Release or refund them first.`);
+  }
+
   // CASCADE DELETE: remove everything belonging to this user
   // 1. Delete all their products (hard delete)
   await Product.deleteMany({ seller: target._id });
@@ -414,6 +427,7 @@ export const moderateProduct = asyncHandler(async (req, res) => {
   else if (action === 'remove') { product.status = 'removed'; product.removedReason = reason; product.removedBy = req.user._id; }
   else throw new HttpError(400, 'Invalid action');
   await product.save();
+  invalidateCatalogCache(); // otherwise a hidden listing lingers on the home feed
   audit(req, `product.${action}`, { kind: 'product', id: product._id }, { reason });
   res.json({ product });
 });
@@ -441,37 +455,54 @@ export const listAllOrders = asyncHandler(async (req, res) => {
   res.json({ items, total });
 });
 
+// Escrow transitions are compare-and-set on `escrow.status: 'held'` so two
+// admins (or an admin and the buyer) can't release and refund the same order.
 export const releaseEscrow = asyncHandler(async (req, res) => {
-  const o = await Order.findById(req.params.id);
-  if (!o) throw new HttpError(404, 'Order not found');
-  if (o.escrow.status !== 'held') throw new HttpError(409, 'Escrow is not in a held state');
-  o.escrow.status = 'released';
-  o.escrow.releasedAt = new Date();
-  o.escrow.releasedBy = req.user._id;
-  o.status = 'completed';
-  o.timeline.push({ at: new Date(), actor: req.user._id, kind: 'escrow', detail: 'Escrow released by admin' });
-  await o.save();
+  const o = await Order.findOneAndUpdate(
+    { _id: req.params.id, 'escrow.status': 'held' },
+    {
+      $set: {
+        'escrow.status': 'released',
+        'escrow.releasedAt': new Date(),
+        'escrow.releasedBy': req.user._id,
+        status: 'completed',
+      },
+      $push: { timeline: { at: new Date(), actor: req.user._id, kind: 'escrow', detail: 'Escrow released by admin' } },
+    },
+    { new: true }
+  );
+  if (!o) {
+    if (!(await Order.exists({ _id: req.params.id }))) throw new HttpError(404, 'Order not found');
+    throw new HttpError(409, 'Escrow is not in a held state');
+  }
   audit(req, 'escrow.release', { kind: 'order', id: o._id });
   res.json({ order: o });
 });
 
 export const refundEscrow = asyncHandler(async (req, res) => {
   const { reason } = req.body;
-  const o = await Order.findById(req.params.id);
-  if (!o) throw new HttpError(404, 'Order not found');
-  if (o.escrow.status !== 'held') throw new HttpError(409, 'Escrow is not in a held state');
-
-  // Restore stock
-  for (const it of o.items) {
-    await Product.findByIdAndUpdate(it.product, { $inc: { stock: it.qty, sold: -it.qty } });
+  const o = await Order.findOneAndUpdate(
+    { _id: req.params.id, 'escrow.status': 'held' },
+    {
+      $set: {
+        'escrow.status': 'refunded',
+        'escrow.refundedAt': new Date(),
+        'escrow.refundedBy': req.user._id,
+        'escrow.reason': reason,
+        status: 'canceled',
+      },
+      $push: { timeline: { at: new Date(), actor: req.user._id, kind: 'escrow', detail: `Escrow refunded by admin: ${reason}` } },
+    },
+    { new: true }
+  );
+  if (!o) {
+    if (!(await Order.exists({ _id: req.params.id }))) throw new HttpError(404, 'Order not found');
+    throw new HttpError(409, 'Escrow is not in a held state');
   }
-  o.escrow.status = 'refunded';
-  o.escrow.refundedAt = new Date();
-  o.escrow.refundedBy = req.user._id;
-  o.escrow.reason = reason;
-  o.status = 'canceled';
-  o.timeline.push({ at: new Date(), actor: req.user._id, kind: 'escrow', detail: `Escrow refunded by admin: ${reason}` });
-  await o.save();
+  for (const it of o.items) {
+    await restoreStock(it.product, it.qty);
+  }
+  invalidateCatalogCache();
   audit(req, 'escrow.refund', { kind: 'order', id: o._id }, { reason });
   res.json({ order: o });
 });

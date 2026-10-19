@@ -21,16 +21,27 @@ async function assertCanChat(buyerId, sellerId) {
   }
 }
 
-/** GET /api/chats — chat list for the current user. */
+/** Which side of this chat the caller is on — sellers buy too. */
+function viewerSide(chat, uid) {
+  const sellerId = (chat.seller?._id || chat.seller)?.toString();
+  return sellerId === uid ? 'seller' : 'buyer';
+}
+
+/**
+ * GET /api/chats — chat list for the current user. A seller who has
+ * also bought from another seller sees both kinds of thread; each chat
+ * carries `viewerRole` so the client labels the other party correctly.
+ */
 export const listChats = asyncHandler(async (req, res) => {
-  const isSeller = req.user.role === 'seller';
-  const filter = isSeller ? { seller: req.user._id } : { buyer: req.user._id };
-  const chats = await Chat.find(filter)
+  const uid = req.user._id.toString();
+  const chats = await Chat.find({ $or: [{ seller: req.user._id }, { buyer: req.user._id }] })
     .sort({ lastMessageAt: -1, updatedAt: -1 })
     .populate('buyer', 'name avatar location')
     .populate('seller', 'name avatar sellerProfile')
     .populate({ path: 'orders', select: 'invoiceNumber status items.title items.image total' });
-  res.json({ chats });
+  res.json({
+    chats: chats.map((c) => ({ ...c.toJSON(), viewerRole: viewerSide(c, uid) })),
+  });
 });
 
 /** GET /api/chats/:id — full thread, marks unread as read for caller. */
@@ -41,8 +52,8 @@ export const getChat = asyncHandler(async (req, res) => {
     .populate({ path: 'orders', select: 'invoiceNumber status total items' });
   if (!chat) throw new HttpError(404, 'Chat not found');
   const uid = req.user._id.toString();
-  const isBuyer = chat.buyer._id.toString() === uid;
-  const isSeller = chat.seller._id.toString() === uid;
+  const isBuyer = chat.buyer?._id?.toString() === uid;
+  const isSeller = chat.seller?._id?.toString() === uid;
   if (!isBuyer && !isSeller && req.user.role !== 'admin') throw new HttpError(403, 'Forbidden');
 
   const messages = await Message.find({ chat: chat._id }).sort({ createdAt: 1 });
@@ -53,7 +64,7 @@ export const getChat = asyncHandler(async (req, res) => {
     chat.unreadBySeller = 0; await chat.save();
   }
 
-  res.json({ chat, messages });
+  res.json({ chat: { ...chat.toJSON(), viewerRole: isSeller ? 'seller' : 'buyer' }, messages });
 });
 
 /** POST /api/chats/:id/messages */
@@ -99,28 +110,23 @@ export const sendMessage = asyncHandler(async (req, res) => {
  * Will fail unless the buyer has at least one order with that seller.
  */
 export const startChat = asyncHandler(async (req, res) => {
-  const { sellerId } = req.body; // "sellerId" is the target user ID
+  const { sellerId } = req.body; // the other party's user ID
+  const me = req.user._id;
+  if (String(sellerId) === me.toString()) throw new HttpError(400, 'You cannot chat with yourself');
 
-  // When a seller calls this they are messaging a buyer — handle both directions.
-  if (req.user.role === 'seller') {
-    const buyer = await User.findById(sellerId);
-    if (!buyer) throw new HttpError(404, 'Buyer not found');
-    await assertCanChat(buyer._id, req.user._id);
-    const chat = await Chat.findOneAndUpdate(
-      { buyer: buyer._id, seller: req.user._id },
-      { $setOnInsert: { buyer: buyer._id, seller: req.user._id } },
-      { upsert: true, new: true }
-    );
-    return res.json({ chat });
-  }
+  const other = await User.findById(sellerId).select('_id');
+  if (!other) throw new HttpError(404, 'User not found');
 
-  // Default: buyer-initiated chat with a seller.
-  const seller = await User.findOne({ _id: sellerId, role: 'seller' });
-  if (!seller) throw new HttpError(404, 'Seller not found');
-  await assertCanChat(req.user._id, seller._id);
+  // Work out the direction from the actual orders rather than the
+  // caller's role: a seller can be the buyer in someone else's shop.
+  let pair;
+  if (await Order.exists({ buyer: me, seller: other._id })) pair = { buyer: me, seller: other._id };
+  else if (await Order.exists({ buyer: other._id, seller: me })) pair = { buyer: other._id, seller: me };
+  else throw new HttpError(403, 'You can only chat a seller after placing an order with them.');
+
   const chat = await Chat.findOneAndUpdate(
-    { buyer: req.user._id, seller: seller._id },
-    { $setOnInsert: { buyer: req.user._id, seller: seller._id } },
+    pair,
+    { $setOnInsert: pair },
     { upsert: true, new: true }
   );
   res.json({ chat });
