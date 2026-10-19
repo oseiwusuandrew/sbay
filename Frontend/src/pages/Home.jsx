@@ -129,7 +129,6 @@ export default function Home() {
     else navigate('/sell');
   };
 
-  const firstName = user?.name?.split(' ')[0];
 
   return (
     <div className="home page">
@@ -137,9 +136,7 @@ export default function Home() {
 
       <HomeHero
         campus={campus}
-        firstName={firstName}
         categories={categories}
-        picks={campus && local.recent.length ? [...local.popular, ...local.recent] : feed.trending}
         query={query}
         setQuery={setQuery}
         onSearch={submitSearch}
@@ -274,7 +271,7 @@ export default function Home() {
           </>
         )}
 
-        <section className="how" aria-labelledby="how-title">
+        <section className="how" id="how" aria-labelledby="how-title">
           <h2 id="how-title">How sBay keeps your money safe</h2>
           <ol className="how-steps">
             <li>

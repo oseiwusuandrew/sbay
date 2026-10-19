@@ -99,6 +99,7 @@
 
 /* ---------- How it works ---------- */
 .how {
+  scroll-margin-top: calc(var(--nav-h) + 16px);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-xl);
