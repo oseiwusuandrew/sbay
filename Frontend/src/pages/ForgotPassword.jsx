@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Mail, Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
-import Logo from '../components/Logo';
+import { Mail, Lock, Eye, EyeOff, CheckCircle2, Loader2, MailCheck } from 'lucide-react';
+import AuthLayout from '../components/AuthLayout';
 import { useAuth } from '../store/AuthContext';
-import './Auth.css';
 
 export default function ForgotPassword() {
   const navigate = useNavigate();
@@ -31,7 +30,7 @@ export default function ForgotPassword() {
       setDevLink(res.resetUrl || '');
       setSent(true);
     } catch (e2) {
-      setErr(e2.message || 'Could not send reset link.');
+      setErr(e2.message || "We couldn't send the reset link. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -40,122 +39,98 @@ export default function ForgotPassword() {
   const savePassword = async (e) => {
     e.preventDefault();
     setErr('');
-    if (pw !== pw2) return setErr('Passwords do not match.');
+    if (pw.length < 8) { setErr('Use at least 8 characters.'); return; }
+    if (pw !== pw2) { setErr("The two passwords don't match."); return; }
     setBusy(true);
     try {
       await resetPassword({ email: email.trim(), token, newPassword: pw });
       setDone(true);
     } catch (e2) {
-      setErr(e2.message || 'Could not reset password.');
+      setErr(e2.message || "We couldn't reset your password. The link may have expired.");
     } finally {
       setBusy(false);
     }
   };
 
-  return (
-    <div className="auth-page kente-bg">
-      <button className="auth-back" onClick={() => navigate(-1)} aria-label="Back">
-        <ArrowLeft size={20} />
-      </button>
-      <div className="auth-logo"><Logo size="lg" /></div>
-
-      {!token && (
-        <form className="auth-card" onSubmit={sendLink}>
-          <h2>Forgot password</h2>
-          <p className="lede">Enter the Gmail you registered with. We'll send a secure reset link.</p>
-
-          <div className="field">
-            <label>Gmail</label>
-            <div className="field-input">
-              <Mail size={16} className="lead" />
-              <input
-                type="email"
-                placeholder="you@gmail.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoFocus
-              />
-            </div>
-          </div>
-
-          {err && <div className="auth-error">{err}</div>}
-          {sent && (
-            <div className="auth-hint">
-              Check your Gmail for the reset link.
-              {devLink && <><br /><a href={devLink}>Open development reset link</a></>}
-            </div>
-          )}
-
-          <button className="btn btn-primary auth-submit" type="submit" disabled={busy}>
-            {busy ? 'Sending...' : 'Send reset link'}
+  if (done) {
+    return (
+      <AuthLayout>
+        <div className="auth-done">
+          <CheckCircle2 size={52} className="auth-done-ic" />
+          <h1 className="auth-title">Password updated</h1>
+          <p className="lede">You can now sign in with your new password.</p>
+          <button className="btn btn-primary auth-submit" type="button" onClick={() => navigate('/login', { replace: true })}>
+            Go to sign in
           </button>
+        </div>
+      </AuthLayout>
+    );
+  }
 
-          <p className="auth-foot">
-            Remembered it? <Link to="/login">Back to sign in</Link>
-          </p>
-        </form>
-      )}
-
-      {token && !done && (
-        <form className="auth-card" onSubmit={savePassword}>
-          <h2>Set new password</h2>
-          <p className="lede">Create and confirm a new password for {email || 'your account'}.</p>
-
+  if (token) {
+    return (
+      <AuthLayout title="Choose a new password" subtitle={`For ${email || 'your account'}.`}>
+        <form onSubmit={savePassword}>
           <div className="field">
-            <label>New password</label>
+            <label htmlFor="fp-pw">New password</label>
             <div className="field-input">
-              <Lock size={16} className="lead" />
-              <input
-                type={show ? 'text' : 'password'}
-                placeholder="At least 8 characters"
-                value={pw}
-                onChange={(e) => setPw(e.target.value)}
-                minLength={8}
-                required
-                autoFocus
-              />
-              <button type="button" className="toggle" onClick={() => setShow(!show)} aria-label="Toggle password">
-                {show ? <EyeOff size={16} /> : <Eye size={16} />}
+              <Lock size={18} className="lead" aria-hidden />
+              <input id="fp-pw" type={show ? 'text' : 'password'} autoComplete="new-password" placeholder="At least 8 characters" value={pw} onChange={(e) => setPw(e.target.value)} minLength={8} required autoFocus />
+              <button type="button" className="toggle" onClick={() => setShow(!show)} aria-label={show ? 'Hide password' : 'Show password'}>
+                {show ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
           </div>
-
           <div className="field">
-            <label>Confirm new password</label>
+            <label htmlFor="fp-pw2">Confirm new password</label>
             <div className="field-input">
-              <Lock size={16} className="lead" />
-              <input
-                type={show ? 'text' : 'password'}
-                placeholder="Re-enter new password"
-                value={pw2}
-                onChange={(e) => setPw2(e.target.value)}
-                minLength={8}
-                required
-              />
+              <Lock size={18} className="lead" aria-hidden />
+              <input id="fp-pw2" type={show ? 'text' : 'password'} autoComplete="new-password" placeholder="Type it again" value={pw2} onChange={(e) => setPw2(e.target.value)} minLength={8} required />
             </div>
           </div>
-
-          {err && <div className="auth-error">{err}</div>}
-
+          {err && <div className="auth-error" role="alert">{err}</div>}
           <button className="btn btn-primary auth-submit" type="submit" disabled={busy}>
-            {busy ? 'Saving...' : 'Reset password'}
+            {busy ? <><Loader2 size={18} className="spin" /> Saving…</> : 'Save new password'}
+          </button>
+        </form>
+      </AuthLayout>
+    );
+  }
+
+  return (
+    <AuthLayout
+      title="Reset your password"
+      subtitle="Enter the email you signed up with and we'll send you a link to choose a new password."
+    >
+      {sent ? (
+        <div className="auth-done">
+          <MailCheck size={48} className="auth-done-ic" />
+          <h2 className="auth-title" style={{ fontSize: '1.3rem' }}>Check your inbox</h2>
+          <p className="lede">
+            If an account exists for <strong>{email}</strong>, a reset link is on its way. It expires in 30 minutes.
+            Can't find it? Check your spam folder.
+          </p>
+          {devLink && <p className="auth-hint"><a href={devLink}>Open reset link (development only)</a></p>}
+          <button className="btn btn-ghost auth-submit" type="button" onClick={() => setSent(false)}>Use a different email</button>
+        </div>
+      ) : (
+        <form onSubmit={sendLink}>
+          <div className="field">
+            <label htmlFor="fp-email">Email</label>
+            <div className="field-input">
+              <Mail size={18} className="lead" aria-hidden />
+              <input id="fp-email" type="email" autoComplete="email" inputMode="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />
+            </div>
+          </div>
+          {err && <div className="auth-error" role="alert">{err}</div>}
+          <button className="btn btn-primary auth-submit" type="submit" disabled={busy}>
+            {busy ? <><Loader2 size={18} className="spin" /> Sending…</> : 'Send reset link'}
           </button>
         </form>
       )}
-
-      {done && (
-        <div className="auth-card" style={{ textAlign: 'center' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
-            <CheckCircle2 size={48} color="#0A7E3E" />
-          </div>
-          <h2>Password updated</h2>
-          <p className="lede">You can now sign in with your new password.</p>
-          <button className="btn btn-primary auth-submit" type="button" onClick={() => navigate('/login', { replace: true })}>
-            Back to sign in
-          </button>
-        </div>
-      )}
-    </div>
+      <p className="auth-foot">
+        Remembered it? <Link to="/login">Back to sign in</Link>
+      </p>
+    </AuthLayout>
   );
 }

@@ -106,7 +106,7 @@ export default function PaymentSuccess() {
           <div className="ps-check" style={{ background: '#0a7e3e' }}>
             <Loader size={36} color="#fff" className="spin" />
           </div>
-          <h2>Confirming Payment…</h2>
+          <h2>Confirming your payment…</h2>
           <p className="muted">Please wait while we verify your payment with Paystack.</p>
         </motion.div>
       </div>
@@ -166,7 +166,7 @@ export default function PaymentSuccess() {
         >
           <Check size={42} color="#fff" />
         </motion.div>
-        <h2>Payment Held in Escrow</h2>
+        <h2>Payment received and held in escrow</h2>
         <p className="muted">
           <Shield size={14} style={{ verticalAlign: 'text-bottom' }} />{' '}
           GH₵ {total.toLocaleString()} is held safely. Funds release to the seller

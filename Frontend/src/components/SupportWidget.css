@@ -32,9 +32,10 @@
   flex-shrink: 0;
 }
 
-/* Desktop: no bottom nav, can sit lower */
+/* Desktop: no bottom nav — sit in the bottom-right corner, clear of content.
+   (left must be reset, otherwise it wins over right and covers the page.) */
 @media (min-width: 961px) {
-  .support-fab { bottom: 28px; right: 28px; }
+  .support-fab { bottom: 28px; right: 28px; left: auto; }
 }
 
 /* --- Chat panel --- */
@@ -66,7 +67,7 @@ body.support-open {
   to   { opacity: 1; transform: translateY(0); }
 }
 @media (min-width: 961px) {
-  .support-panel { bottom: 96px; right: 28px; }
+  .support-panel { bottom: 96px; right: 28px; left: auto; }
 }
 
 /* --- Header --- */

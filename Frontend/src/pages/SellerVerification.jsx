@@ -215,7 +215,7 @@ export default function SellerVerification() {
                   <li><span>Government ID photo</span><strong>{form.govIdImage ? 'Uploaded' : 'Missing'}</strong></li>
                   <li><span>Selfie</span><strong>{form.selfieImage ? 'Uploaded' : 'Missing'}</strong></li>
                 </ul>
-                <p className="muted small">By submitting you agree to sBay's verification policy. Reviews usually take less than 24 hours.</p>
+                <p className="muted small">By submitting you agree to sBay's verification policy. We'll email you as soon as it has been reviewed.</p>
                 {err && <div className="auth-error">{err}</div>}
               </>
             )}

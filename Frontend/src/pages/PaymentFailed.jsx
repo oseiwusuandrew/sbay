@@ -38,7 +38,7 @@ export default function PaymentFailed() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25 }}
         >
-          Payment Unsuccessful
+          Payment not completed
         </motion.h2>
 
         <motion.p
@@ -77,7 +77,7 @@ export default function PaymentFailed() {
             className="btn btn-primary"
             onClick={() => navigate('/cart')}
           >
-            <RotateCcw size={16} /> Try Again
+            <RotateCcw size={16} /> Try again
           </button>
 
           <div className="pf-divider"><span>or</span></div>
@@ -86,14 +86,14 @@ export default function PaymentFailed() {
             className="btn btn-ghost"
             onClick={() => navigate('/home')}
           >
-            <ShoppingCart size={16} /> Keep Shopping
+            <ShoppingCart size={16} /> Keep shopping
           </button>
 
           <button
             className="btn btn-ghost"
             onClick={() => navigate('/chats')}
           >
-            <MessageCircle size={16} /> Contact Support
+            <MessageCircle size={16} /> Contact support
           </button>
         </motion.div>
 

@@ -10,9 +10,9 @@
  * To force an update: change SW_VERSION below. The new SW will install,
  * purge old caches, and take over immediately.
  */
-const SW_VERSION = 'v-1792450191743';
+const SW_VERSION = 'v-1792451757971';
 const CACHE_NAME = `sbay-${SW_VERSION}`;
-const OFFLINE_URLS = ['/', '/index.html', '/favicon.svg', '/logo.png'];
+const OFFLINE_URLS = ['/', '/index.html', '/favicon.svg', '/icon-192.png'];
 
 // Install — pre-cache critical shell, activate immediately
 self.addEventListener('install', (event) => {

@@ -200,8 +200,8 @@ p { margin: 0; }
   border-color: var(--primary);
   box-shadow: var(--focus);
 }
-.field-hint { font-size: var(--fs-xs); color: var(--text-muted); }
-.field-error { font-size: var(--fs-xs); color: var(--error); font-weight: 600; }
+.field > .field-hint, .field-hint { font-size: var(--fs-xs); font-weight: 500; color: var(--text-muted); }
+.field > .field-error, .field-error { font-size: var(--fs-xs); color: var(--error); font-weight: 600; }
 
 /* ---------- Chips ---------- */
 .chip {

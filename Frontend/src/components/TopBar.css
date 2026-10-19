@@ -154,7 +154,8 @@
 
 @media (max-width: 720px) {
   .topbar { gap: 8px; padding: 8px 12px 8px 4px; }
-  .topbar .sbay-logo-word { display: none; }
+  .topbar-brand { padding-left: 8px; }
+  .topbar-brand .sbay-logo { font-size: 24px; }
   .topbar-actions { gap: 6px; }
   .topbar-actions .avatar,
   .topbar-actions .icon-btn[aria-label="Cart"] { display: none; }
@@ -173,7 +174,6 @@
   .search-wrap .search-icon { left: 12px; }
   /* When actions are visible, keep search compact so they fit. */
   .topbar:not(.no-actions) .search-wrap { max-width: none; }
-  .topbar-brand .sbay-logo-image { height: 54px !important; }
 }
 
 /* Hide TopBar on desktop unless it's carrying a back button for sub-pages. */

@@ -153,7 +153,7 @@ export const getSellerReviews = asyncHandler(async (req, res) => {
   const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 50);
   const skip = (page - 1) * limit;
 
-  const [items, total, summary] = await Promise.all([
+  const [items, total, summary, byStar] = await Promise.all([
     Review.find({ seller: seller._id })
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -170,9 +170,18 @@ export const getSellerReviews = asyncHandler(async (req, res) => {
         },
       },
     ]),
+    Review.aggregate([
+      { $match: { seller: seller._id } },
+      { $group: { _id: '$rating', count: { $sum: 1 } } },
+    ]),
   ]);
 
   const stats = summary[0] || { rating: 0, reviewCount: 0 };
+  // Count per star (5 → 1) for the rating breakdown bars.
+  const distribution = [5, 4, 3, 2, 1].map((star) => ({
+    star,
+    count: byStar.find((b) => b._id === star)?.count || 0,
+  }));
   res.json({
     seller: {
       _id: seller._id,
@@ -189,6 +198,7 @@ export const getSellerReviews = asyncHandler(async (req, res) => {
     limit,
     total,
     rating: Number(stats.rating || 0),
+    distribution,
   });
 });
 

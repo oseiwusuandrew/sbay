@@ -43,6 +43,15 @@
   gap: 12px;
   flex-wrap: wrap;
 }
+.search-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.filter-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  min-height: 28px; padding: 2px 10px;
+  border-radius: var(--r-pill);
+  background: var(--primary-50); color: var(--primary-dark);
+  font-size: 0.8rem; font-weight: 700;
+}
+.filter-tag:hover { background: var(--primary-100); }
 .sort-select select {
   min-height: 40px;
   padding: 8px 34px 8px 12px;

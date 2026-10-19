@@ -1,10 +1,54 @@
+/* Brand colours from the original logo artwork */
+.sbay-logo, .sbay-mark {
+  --logo-green: #0B4F27;
+  --logo-gold: #F4C430;
+}
+
 .sbay-logo {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  font-family: var(--heading);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  user-select: none;
+  white-space: nowrap;
+  font-size: 28px;
 }
+.sbay-logo.size-sm { font-size: 22px; }
+.sbay-logo.size-md { font-size: 28px; }
+.sbay-logo.size-lg { font-size: 40px; }
+.sbay-logo.size-xl { font-size: 64px; }
 
-.sbay-logo-image {
-  display: block;
-  object-fit: contain;
+.sbay-logo-sb { color: var(--logo-green); padding-right: 0.06em; }
+.sbay-logo-tile {
+  display: inline-block;
+  color: var(--logo-gold);
+  background: var(--logo-green);
+  padding: 0.04em 0.16em 0.14em;
+  border-radius: 0.16em;
 }
+.sbay-logo.tone-light .sbay-logo-sb { color: #fff; }
+.sbay-logo.tone-light .sbay-logo-tile { background: rgba(255, 255, 255, 0.12); box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); }
+
+/* Square app mark (favicon / avatar style) */
+.sbay-mark {
+  display: inline-grid;
+  place-items: center;
+  grid-auto-flow: column;
+  width: 40px;
+  height: 40px;
+  border-radius: 24%;
+  background: var(--logo-green);
+  font-family: var(--heading);
+  font-weight: 800;
+  letter-spacing: -0.06em;
+  line-height: 1;
+  font-size: 20px;
+  user-select: none;
+}
+.sbay-mark.size-sm { width: 32px; height: 32px; font-size: 16px; }
+.sbay-mark.size-lg { width: 56px; height: 56px; font-size: 28px; }
+.sbay-mark.size-xl { width: 88px; height: 88px; font-size: 44px; }
+.sbay-mark-s { color: #fff; }
+.sbay-mark-b { color: var(--logo-gold); }

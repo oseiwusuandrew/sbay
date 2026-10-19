@@ -79,6 +79,17 @@ export function LocationProvider({ children }) {
     return () => { alive = false; };
   }, []);
 
+  // A saved campus is a snapshot; refresh it from the live list so label
+  // fixes and listing counts reach people who picked it earlier.
+  useEffect(() => {
+    if (!campus || schools.length === 0) return;
+    const fresh = schools.find((s) => s.id === campus.id);
+    if (fresh && (fresh.label !== campus.label || fresh.count !== campus.count || fresh.city !== campus.city)) {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh)); } catch { /* */ }
+      setCampusState(fresh);
+    }
+  }, [schools, campus]);
+
   // Auto-detect location via browser geolocation once schools are loaded
   useEffect(() => {
     if (loading || schools.length === 0) return;

@@ -33,7 +33,7 @@ export default function ChatList() {
       <main className="page-main">
         <div className="chat-search">
           <Search size={16} />
-          <input placeholder="Search conversations..." value={q} onChange={(e) => setQ(e.target.value)} />
+          <input placeholder="Search conversations" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
 
         {loading && <SkeletonList count={5} />}

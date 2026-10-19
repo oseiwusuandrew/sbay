@@ -61,7 +61,7 @@ export default function SellerSales() {
 
   return (
     <div className="page">
-      <TopBar showBack title="Incoming Orders" showSearch={false} />
+      <TopBar showBack title="Incoming orders" showSearch={false} />
       <main className="page-main">
         <div className="sd-chats-help">
           <Package size={16} />

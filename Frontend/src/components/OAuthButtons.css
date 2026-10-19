@@ -2,24 +2,23 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-top: 14px;
+  margin-top: 18px;
 }
 
 .oauth-divider {
   display: flex;
   align-items: center;
-  gap: 10px;
-  color: #6b7a6b;
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  gap: 12px;
+  color: var(--text-soft);
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 .oauth-divider::before,
 .oauth-divider::after {
   content: '';
   flex: 1;
   height: 1px;
-  background: #e6e9e3;
+  background: var(--border);
 }
 
 .oauth-buttons {
@@ -43,18 +42,16 @@
   transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 
+/* Follows Google's sign-in button guidelines (white, grey outline, 4-colour G). */
 .oauth-google {
   background: #fff;
   color: #1f1f1f;
-  border: 1px solid #d8dadf;
-  box-shadow: 0 8px 18px rgba(31, 31, 31, 0.08);
+  border: 1px solid #747775;
+  font-family: Roboto, var(--sans);
+  font-weight: 500;
 }
-.oauth-google:hover {
-  background: #fff;
-  border-color: #bfc4cc;
-  box-shadow: 0 12px 24px rgba(31, 31, 31, 0.12);
-  transform: translateY(-1px);
-}
+.oauth-google:hover { background: #f8faff; }
+.oauth-google:focus-visible { box-shadow: var(--focus); }
 
 .oauth-apple {
   background: #000;
@@ -65,39 +62,4 @@
   background: #1a1a1a;
 }
 
-/* Password strength meter */
-.pw-strength {
-  margin-top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.pw-bar {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
-}
-.pw-seg {
-  height: 5px;
-  border-radius: 3px;
-  background: #e6e9e3;
-  transition: background 0.2s;
-}
-.pw-checks {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px 12px;
-  font-size: 0.74rem;
-  color: #888;
-}
-.pw-checks li {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.pw-checks li.ok {
-  color: #0a7e3e;
-}
+/* Password strength styles live in pages/Auth.css */

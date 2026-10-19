@@ -130,7 +130,7 @@ export default function BecomeSeller() {
 
       <div className="bs-card">
         <header className="bs-head">
-          <h2>Become a Seller</h2>
+          <h2>Become a seller</h2>
           <p className="lede">A few quick steps to start selling on sBay.</p>
         </header>
 
@@ -208,7 +208,7 @@ export default function BecomeSeller() {
                       hidden
                     />
                   </label>
-                  <p className="muted small">Your ID is encrypted and only used for verification.</p>
+                  <p className="muted small">Your ID is only used to verify you and is never shown to buyers.</p>
                 </div>
               </>
             )}
@@ -237,7 +237,7 @@ export default function BecomeSeller() {
                   <div className="field-input">
                     <select value={form.payoutMethod} onChange={(e) => set('payoutMethod', e.target.value)}>
                       <option value="mtn-momo">MTN MoMo</option>
-                      <option value="vodafone-cash">Vodafone Cash</option>
+                      <option value="vodafone-cash">Telecel Cash</option>
                       <option value="airteltigo-money">AirtelTigo Money</option>
                       <option value="bank">Bank account</option>
                     </select>
@@ -251,7 +251,7 @@ export default function BecomeSeller() {
                       pattern="[0-9]*"
                       value={form.payoutAccount}
                       onChange={(e) => set('payoutAccount', e.target.value.replace(/\D/g, ''))}
-                      placeholder="number"
+                      placeholder="024 123 4567"
                     />
                   </div>
                   <p className="muted small">Enter a valid phone or account number for receiving buyer payments.</p>
@@ -270,7 +270,7 @@ export default function BecomeSeller() {
                 <div className="terms-intro-block">
                   <Shield size={22} color="#0A7E3E" />
                   <div>
-                    <h4 style={{ margin: 0, marginBottom: 4 }}>Almost there!</h4>
+                    <h4 style={{ margin: 0, marginBottom: 4 }}>Almost done</h4>
                     <p className="muted small" style={{ margin: 0, lineHeight: 1.55 }}>
                       Please read and accept both documents before continuing.
                       Tap each link to read the full text in a new page.
@@ -345,7 +345,7 @@ export default function BecomeSeller() {
               onClick={finish}
               style={{ marginLeft: 'auto' }}
             >
-              {submitting ? 'Submitting…' : <>Agree & Continue <Check size={16} /></>}
+              {submitting ? 'Submitting…' : <>Agree and continue <Check size={16} /></>}
             </button>
           )}
         </div>

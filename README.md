@@ -51,7 +51,7 @@
 - 💰 **Subscription Tiers** - Free, Premium, and Business plans with different listing limits
 - 📊 **Sales Dashboard** - Track sales, revenue, and inventory in real-time
 - ✅ **Verification System** - Build trust with verified seller badges
-- 💳 **Flexible Payouts** - Support for Mobile Money (MTN, Vodafone, AirtelTigo) and bank transfers
+- 💳 **Flexible Payouts** - Support for Mobile Money (MTN, Telecel, AirtelTigo) and bank transfers
 - 📈 **Analytics** - Monitor product views and performance metrics
 
 ### For Administrators

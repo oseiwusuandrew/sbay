@@ -119,9 +119,10 @@
 .switch.on { background: var(--primary); }
 .switch.on .dot { transform: translateX(20px); }
 
-.danger-zone {
-  border-color: #f3c4c4;
-}
+.danger-zone { display: flex; flex-direction: column; gap: 12px; }
+.danger-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.settings-page > * { max-width: 760px; width: 100%; }
+.field input[readonly] { background: var(--surface-3); color: var(--text-muted); cursor: default; }
 .danger-zone .danger-text {
   color: var(--error);
   display: inline-flex; align-items: center; gap: 6px;

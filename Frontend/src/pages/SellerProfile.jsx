@@ -1,18 +1,41 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, Star, MapPin, Send, BadgeCheck, Clock, Loader2,
+  ArrowLeft, Star, MapPin, Send, BadgeCheck, Clock, Loader2, Share2, Package, MessageSquareText, PenLine, Check,
 } from 'lucide-react';
-import ProductCard, { ProductGrid } from '../components/ProductCard';
 import { sbay } from '../api/client';
 import { useAuth } from '../store/AuthContext';
 import { Skeleton, SkeletonGrid } from '../components/Skeleton';
+import ProductCard, { ProductGrid } from '../components/ProductCard';
 import Avatar from '../components/Avatar';
 import BottomNav from '../components/BottomNav';
 import Footer from '../components/Footer';
 import './pages.css';
 import './SellerProfile.css';
 
+function Stars({ value, size = 14 }) {
+  return (
+    <span className="stars" aria-label={`${Number(value || 0).toFixed(1)} out of 5`}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <Star
+          key={n}
+          size={size}
+          fill={n <= Math.round(value) ? 'currentColor' : 'transparent'}
+          className={n <= Math.round(value) ? 'on' : 'off'}
+          aria-hidden
+        />
+      ))}
+    </span>
+  );
+}
+
+const fmtDate = (d) => (d ? new Date(d).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '');
+
+/**
+ * Seller storefront. Listings and reviews are shown together — reviews
+ * used to sit behind a tab and weren't even fetched until it was opened,
+ * so buyers never saw a seller's reputation while browsing their items.
+ */
 export default function SellerProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -20,116 +43,78 @@ export default function SellerProfile() {
 
   const [seller, setSeller] = useState(null);
   const [loadError, setLoadError] = useState('');
-  const [tab, setTab] = useState('listings');
-  const [reviewsState, setReviewsState] = useState({ items: [], total: 0, rating: 0 });
-  const [reviewsLoading, setReviewsLoading] = useState(false);
-  const [reviewsError, setReviewsError] = useState('');
+  const [reviews, setReviews] = useState({ items: [], total: 0, rating: 0, distribution: [], page: 1 });
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+  const [moreLoading, setMoreLoading] = useState(false);
+  const [writing, setWriting] = useState(false);
   const [draft, setDraft] = useState({ rating: 5, text: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [reviewMsg, setReviewMsg] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     let alive = true;
+    setSeller(null);
     setLoadError('');
     sbay.getSeller(id)
-      .then((data) => {
-        if (!alive) return;
-        setSeller(data);
-      })
+      .then((data) => { if (alive) setSeller(data); })
       .catch((e) => {
         if (!alive) return;
-        setSeller(null);
-        // Previously the skeleton spun forever on any error.
         setLoadError(e.status === 404 ? 'This seller could not be found.' : (e.message || 'Could not load this seller.'));
       });
     return () => { alive = false; };
   }, [id]);
 
+  const loadReviews = useCallback(async (page = 1) => {
+    const data = await sbay.getSellerReviews(id, page);
+    setReviews((cur) => ({
+      items: page === 1 ? (data.items || []) : [...cur.items, ...(data.items || [])],
+      total: Number(data.total) || 0,
+      rating: Number(data.rating) || 0,
+      distribution: data.distribution || cur.distribution,
+      page,
+    }));
+  }, [id]);
+
   useEffect(() => {
-    let alive = true;
-    if (tab !== 'reviews') return undefined;
-
     setReviewsLoading(true);
-    setReviewsError('');
-    sbay.getSellerReviews(id)
-      .then((data) => {
-        if (!alive) return;
-        setReviewsState({
-          items: Array.isArray(data.items) ? data.items : [],
-          total: Number(data.total) || 0,
-          rating: Number(data.rating) || 0,
-        });
-        if (data.seller) {
-          setSeller((cur) => (cur ? {
-            ...cur,
-            sellerProfile: {
-              ...(cur.sellerProfile || {}),
-              ...(data.seller.sellerProfile || {}),
-              rating: Number(data.rating) || Number(data.seller.sellerProfile?.rating) || 0,
-              reviewCount: Number(data.total) || Number(data.seller.sellerProfile?.reviewCount) || 0,
-            },
-          } : cur));
-        }
-      })
-      .catch((err) => {
-        if (!alive) return;
-        setReviewsError(err.message || 'Unable to load reviews.');
-        setReviewsState({ items: [], total: 0, rating: 0 });
-      })
-      .finally(() => {
-        if (alive) setReviewsLoading(false);
-      });
+    loadReviews(1).catch(() => {}).finally(() => setReviewsLoading(false));
+  }, [loadReviews]);
 
-    return () => { alive = false; };
-  }, [id, tab]);
-
-  const ratingSummary = useMemo(() => {
-    const count = reviewsState.total || seller?.sellerProfile?.reviewCount || 0;
-    const rating = reviewsState.rating || seller?.sellerProfile?.rating || 0;
-    return { count, rating };
-  }, [reviewsState.total, reviewsState.rating, seller?.sellerProfile]);
+  const loadMore = async () => {
+    setMoreLoading(true);
+    try { await loadReviews(reviews.page + 1); } catch { /* keep what we have */ }
+    finally { setMoreLoading(false); }
+  };
 
   const submitReview = async (e) => {
     e.preventDefault();
-    if (!user) {
-      navigate('/login?next=' + encodeURIComponent(`/seller/${id}`));
-      return;
-    }
+    if (!user) { navigate('/login?next=' + encodeURIComponent(`/seller/${id}`)); return; }
     if (!draft.text.trim()) return;
-
     setSubmitting(true);
-    setReviewsError('');
+    setReviewMsg(null);
     try {
-      const result = await sbay.submitReview(id, {
-        rating: draft.rating,
-        text: draft.text.trim(),
-      });
-
-      setReviewsState((cur) => ({
-        ...cur,
-        items: result.review
-          ? [result.review, ...cur.items.filter((r) => r._id !== result.review._id)]
-          : cur.items,
-        total: Number(result.reviewCount) || cur.total,
-        rating: Number(result.rating) || cur.rating,
-      }));
-
-      setSeller((cur) => (cur ? {
-        ...cur,
-        sellerProfile: {
-          ...(cur.sellerProfile || {}),
-          rating: Number(result.rating) || cur.sellerProfile?.rating || 0,
-          reviewCount: Number(result.reviewCount) || cur.sellerProfile?.reviewCount || 0,
-        },
-      } : cur));
-
+      await sbay.submitReview(id, { rating: draft.rating, text: draft.text.trim() });
+      await loadReviews(1);
       setDraft({ rating: 5, text: '' });
-      setTab('reviews');
+      setWriting(false);
+      setReviewMsg({ ok: true, text: 'Thanks, your review has been posted.' });
     } catch (err) {
-      setReviewsError(err.message || 'Could not post review.');
+      setReviewMsg({ ok: false, text: err.message || 'Could not post your review.' });
     } finally {
       setSubmitting(false);
     }
   };
+
+  const share = async () => {
+    const url = window.location.href;
+    try {
+      if (navigator.share) await navigator.share({ title: seller?.name, url });
+      else { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1800); }
+    } catch { /* cancelled */ }
+  };
+
+  const scrollTo = (sectionId) => document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   if (!seller && loadError) {
     return (
@@ -150,135 +135,171 @@ export default function SellerProfile() {
   if (!seller) {
     return (
       <div className="page sp">
-        <div className="sp-hero" style={{ paddingBottom: 40 }}>
-          <Skeleton w={92} h={92} r="50%" style={{ margin: '40px auto 12px', display: 'block' }} />
-          <Skeleton w={140} h={20} style={{ margin: '0 auto', display: 'block' }} />
-        </div>
-        <main className="page-main">
-          <SkeletonGrid count={6} />
-        </main>
+        <div className="sp-hero"><div className="sp-hero-inner"><Skeleton w={96} h={96} r="50%" /><Skeleton w={220} h={26} /></div></div>
+        <main className="page-main"><SkeletonGrid count={6} /></main>
       </div>
     );
   }
 
-  const reviewCount = ratingSummary.count || 0;
-  const reviewRating = ratingSummary.rating || 0;
+  const rating = reviews.rating || seller.rating || 0;
+  const reviewCount = reviews.total || seller.reviews || 0;
+  const isOwner = user && String(user.id) === String(seller.id);
+  const maxBar = Math.max(1, ...reviews.distribution.map((d) => d.count));
 
   return (
     <div className="page sp">
-      <div className="sp-hero">
-        <button className="round-btn" onClick={() => navigate(-1)}><ArrowLeft size={20} /></button>
-        <Avatar src={seller.avatar} name={seller.name} size={80} className="sp-avatar" />
-        <h1 className="sp-name">
-          {seller.name}
-          {seller.verified && <BadgeCheck size={18} color="#0A7E3E" aria-label="Verified" />}
-        </h1>
-        <div className="sp-meta">
-          <span><Star size={13} fill="#F5A623" color="#F5A623" /> {reviewRating.toFixed(1)} ({reviewCount})</span>
-          <span><MapPin size={13} /> {seller.sellerProfile?.location || seller.location || 'Location not set'}</span>
+      <header className="sp-hero">
+        <div className="sp-hero-inner">
+          <button className="round-btn sp-back" onClick={() => navigate(-1)} aria-label="Back"><ArrowLeft size={20} /></button>
+          <Avatar src={seller.avatar} name={seller.name} size={96} className="sp-avatar" />
+          <div className="sp-id">
+            <h1 className="sp-name">
+              {seller.name}
+              {seller.verified && <BadgeCheck size={22} className="sp-verified" aria-label="Verified seller" />}
+            </h1>
+            <div className="sp-meta">
+              <button className="sp-rating" onClick={() => scrollTo('reviews')}>
+                <Stars value={rating} />
+                <strong>{rating > 0 ? rating.toFixed(1) : 'New seller'}</strong>
+                {reviewCount > 0 && <span>({reviewCount} review{reviewCount === 1 ? '' : 's'})</span>}
+              </button>
+              {seller.location && <span><MapPin size={14} aria-hidden /> {seller.location}</span>}
+              {seller.createdAt && <span><Clock size={14} aria-hidden /> Selling since {new Date(seller.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}</span>}
+            </div>
+            {seller.bio && <p className="sp-bio">{seller.bio}</p>}
+            <div className="sp-badges">
+              {seller.verified
+                ? <span className="sp-badge is-verified"><BadgeCheck size={14} /> Verified by sBay</span>
+                : <span className="sp-badge is-pending"><Clock size={14} /> Verification in progress</span>}
+              <span className="sp-badge"><Package size={14} /> {seller.listings.length} active listing{seller.listings.length === 1 ? '' : 's'}</span>
+            </div>
+          </div>
+          <button className="btn btn-ghost btn-sm sp-share" onClick={share}>
+            {copied ? <><Check size={15} /> Link copied</> : <><Share2 size={15} /> Share store</>}
+          </button>
         </div>
-        <p className="sp-bio">{seller.sellerProfile?.bio || seller.bio || 'No store bio yet.'}</p>
-        <div className="sp-badges">
-          {seller.verified ? (
-            <span className="badge-soft is-verified"><BadgeCheck size={12} /> Verified seller</span>
-          ) : (
-            <span className="badge-soft is-pending"><Clock size={12} /> Pending review</span>
-          )}
-          {seller.createdAt && (
-            <span className="badge-soft">
-              <Clock size={12} /> On sBay since {new Date(seller.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
-            </span>
-          )}
+      </header>
+
+      <nav className="sp-jump" aria-label="Store sections">
+        <div className="sp-jump-inner">
+          <button className="chip" onClick={() => scrollTo('listings')}>Listings · {seller.listings.length}</button>
+          <button className="chip" onClick={() => scrollTo('reviews')}>Reviews · {reviewCount}</button>
         </div>
-      </div>
+      </nav>
 
-      <div className="sp-tabs">
-        <button className={`sp-tab ${tab === 'listings' ? 'active' : ''}`} onClick={() => setTab('listings')}>
-          Listings ({seller.listings.length})
-        </button>
-        <button className={`sp-tab ${tab === 'reviews' ? 'active' : ''}`} onClick={() => setTab('reviews')}>
-          Reviews ({reviewCount})
-        </button>
-      </div>
-
-      <main className="page-main">
-        {tab === 'listings' ? (
-          seller.listings.length === 0 ? (
-            <div className="empty">
-              <h3>No active listings</h3>
-              <p>This seller doesn't have anything for sale right now.</p>
+      <main className="page-main sp-main">
+        <section id="listings" className="section sp-listings">
+          <div className="section-head"><h2 className="section-title">Listings</h2></div>
+          {seller.listings.length === 0 ? (
+            <div className="empty empty--compact">
+              <h3>Nothing for sale right now</h3>
+              <p>Check back soon, or save this store's link.</p>
             </div>
           ) : (
-            <ProductGrid>
-              {seller.listings.map((p) => (
-                <ProductCard key={p.id} p={{ ...p, sellerName: undefined }} />
-              ))}
+            <ProductGrid dense>
+              {seller.listings.map((p) => <ProductCard key={p.id} p={{ ...p, sellerName: undefined }} />)}
             </ProductGrid>
-          )
-        ) : (
-          <div className="sp-reviews">
+          )}
+        </section>
+
+        <aside id="reviews" className="section sp-reviews" aria-labelledby="reviews-title">
+          <div className="section-head">
+            <h2 id="reviews-title" className="section-title">Reviews</h2>
+            {user && !isOwner && !writing && (
+              <button className="view-all" onClick={() => setWriting(true)}><PenLine size={14} /> Write a review</button>
+            )}
+          </div>
+
+          <div className="rv-summary card">
+            <div className="rv-score">
+              <strong>{rating > 0 ? rating.toFixed(1) : '–'}</strong>
+              <Stars value={rating} size={16} />
+              <span>{reviewCount} review{reviewCount === 1 ? '' : 's'}</span>
+            </div>
+            <ul className="rv-bars" aria-label="Rating breakdown">
+              {(reviews.distribution.length ? reviews.distribution : [5, 4, 3, 2, 1].map((star) => ({ star, count: 0 }))).map((d) => (
+                <li key={d.star}>
+                  <span>{d.star}</span>
+                  <Star size={11} fill="currentColor" aria-hidden />
+                  <span className="rv-bar"><span style={{ width: `${(d.count / maxBar) * 100}%` }} /></span>
+                  <span className="rv-n">{d.count}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {reviewMsg && (
+            <div className={`notice ${reviewMsg.ok ? 'notice--info' : 'notice--error'}`} role={reviewMsg.ok ? 'status' : 'alert'}>{reviewMsg.text}</div>
+          )}
+
+          {writing && (
             <form className="card review-form" onSubmit={submitReview}>
-              <h4>Leave a review</h4>
-              <p className="muted small" style={{ margin: 0 }}>
-                Reviews are open to buyers who have received an order from this seller.
-              </p>
-              <div className="rating-pick">
+              <div className="review-form-head">
+                <strong>Rate {seller.name}</strong>
+                <span className="muted small">Only buyers who've received an order from this seller can post.</span>
+              </div>
+              <div className="rating-pick" role="radiogroup" aria-label="Your rating">
                 {[1, 2, 3, 4, 5].map((n) => (
                   <button
                     key={n}
                     type="button"
+                    role="radio"
+                    aria-checked={draft.rating === n}
                     onClick={() => setDraft((d) => ({ ...d, rating: n }))}
-                    aria-label={`${n} stars`}
+                    aria-label={`${n} star${n > 1 ? 's' : ''}`}
                   >
-                    <Star size={20} fill={n <= draft.rating ? '#F5A623' : 'transparent'} color={n <= draft.rating ? '#F5A623' : '#C9D4BD'} />
+                    <Star size={24} fill={n <= draft.rating ? 'var(--secondary)' : 'transparent'} color={n <= draft.rating ? 'var(--secondary)' : 'var(--border-strong)'} />
                   </button>
                 ))}
               </div>
               <textarea
                 rows={3}
-                placeholder={user ? 'Share your experience with this seller...' : 'Sign in to leave a review'}
+                maxLength={2000}
+                placeholder="Was the item as described? How was meeting up?"
                 value={draft.text}
                 onChange={(e) => setDraft((d) => ({ ...d, text: e.target.value }))}
               />
-              {reviewsError && <p className="auth-error" style={{ marginTop: 0 }}>{reviewsError}</p>}
-              <button className="btn btn-primary" type="submit" style={{ alignSelf: 'flex-start' }} disabled={submitting}>
-                {submitting ? <Loader2 size={14} className="spin" /> : <Send size={14} />}
-                {user ? 'Post Review' : 'Sign in to post'}
-              </button>
+              <div className="review-form-actions">
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setWriting(false)}>Cancel</button>
+                <button className="btn btn-primary btn-sm" type="submit" disabled={submitting || !draft.text.trim()}>
+                  {submitting ? <Loader2 size={14} className="spin" /> : <Send size={14} />} Post review
+                </button>
+              </div>
             </form>
+          )}
 
-            {reviewsLoading ? (
-              <div className="card" style={{ display: 'grid', placeItems: 'center', padding: 24 }}>
-                <Loader2 size={18} className="spin" />
-              </div>
-            ) : reviewsState.items.length > 0 ? (
-              reviewsState.items.map((r) => {
-                const reviewerName = r.reviewer?.name || 'Verified buyer';
-                const time = r.createdAt ? new Date(r.createdAt).toLocaleDateString() : 'Recently';
-                return (
-                  <article key={r._id} className="card review-card">
-                    <div className="review-head">
-                      <strong>{reviewerName}</strong>
-                      <span className="muted">{time}</span>
+          {reviewsLoading ? (
+            <Skeleton h={96} r={16} />
+          ) : reviews.items.length === 0 ? (
+            <div className="rv-empty">
+              <MessageSquareText size={22} aria-hidden />
+              <p>No reviews yet. Buyers can rate this seller once their order is delivered.</p>
+            </div>
+          ) : (
+            <ul className="rv-list">
+              {reviews.items.map((r) => (
+                <li key={r._id} className="rv-item">
+                  <div className="rv-head">
+                    <Avatar src={r.reviewer?.avatar} name={r.reviewer?.name || 'Buyer'} size={36} />
+                    <div>
+                      <strong>{r.reviewer?.name || 'sBay buyer'}</strong>
+                      <span className="muted small">{fmtDate(r.updatedAt || r.createdAt)}</span>
                     </div>
-                    <div className="review-stars">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <Star key={i} size={14} fill={i < r.rating ? '#F5A623' : '#E5E4E7'} color={i < r.rating ? '#F5A623' : '#E5E4E7'} />
-                      ))}
-                    </div>
-                    <p style={{ marginTop: 6 }}>{r.text}</p>
-                  </article>
-                );
-              })
-            ) : (
-              <div className="card" style={{ padding: 18 }}>
-                <p className="muted" style={{ margin: 0 }}>
-                  No reviews yet. Be the first to rate this seller after a completed order.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
+                    <Stars value={r.rating} size={13} />
+                  </div>
+                  <p>{r.text}</p>
+                  <span className="rv-verified"><Check size={12} /> Verified purchase</span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {reviews.items.length < reviews.total && (
+            <button className="btn btn-ghost btn-block" onClick={loadMore} disabled={moreLoading}>
+              {moreLoading ? <Loader2 size={16} className="spin" /> : null} Show more reviews
+            </button>
+          )}
+        </aside>
       </main>
       <Footer />
       <BottomNav />

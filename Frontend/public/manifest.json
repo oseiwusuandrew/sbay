@@ -1,33 +1,17 @@
 {
-  "name": "sBay - Campus Marketplace",
+  "name": "sBay — Campus Marketplace",
   "short_name": "sBay",
-  "description": "Ghana's premier campus marketplace. Buy and sell textbooks, electronics, fashion, and more.",
-  "start_url": "/",
+  "description": "Ghana's campus marketplace. Buy and sell textbooks, electronics, fashion and more, protected by escrow.",
+  "start_url": "/home",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#0A7E3E",
+  "background_color": "#F5F6F3",
+  "theme_color": "#0B4F27",
   "orientation": "portrait-primary",
   "icons": [
-    {
-      "src": "/logo.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/logo.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
-  "categories": ["shopping", "marketplace", "education"],
-  "screenshots": [
-    {
-      "src": "/screenshot-mobile.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "form_factor": "narrow"
-    }
-  ]
+  "categories": ["shopping", "marketplace", "education"]
 }

@@ -248,7 +248,7 @@ export default function Sell() {
   if (gateVerifying) {
     return (
       <div className="page">
-        <TopBar showBack title="Verifying Payment" showSearch={false} />
+        <TopBar showBack title="Verifying payment" showSearch={false} />
         <main className="page-main" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 64, gap: 16 }}>
           <Loader2 size={36} className="spin" style={{ color: 'var(--primary)' }} />
           <p className="muted">Confirming your payment…</p>
@@ -260,7 +260,7 @@ export default function Sell() {
   if (needsOnboarding) {
     return (
       <div className="page">
-        <TopBar showBack title="Seller Onboarding Fee" showSearch={false} />
+        <TopBar showBack title="Seller onboarding fee" showSearch={false} />
         <main className="page-main" style={{ maxWidth: 460, margin: '0 auto', padding: '32px 20px' }}>
           <div style={{ background: '#fff', borderRadius: 16, padding: '32px 24px', boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', gap: 18, textAlign: 'center' }}>
             <span style={{ background: 'var(--primary-50)', width: 64, height: 64, borderRadius: '50%', display: 'grid', placeItems: 'center', margin: '0 auto', color: 'var(--primary)' }}>
@@ -309,7 +309,7 @@ export default function Sell() {
 
   return (
     <div className="page">
-      <TopBar showBack title={isEdit ? 'Edit Listing' : 'New Listing'} showSearch={false} />
+      <TopBar showBack title={isEdit ? 'Edit listing' : 'New listing'} showSearch={false} />
 
       {/* Stepper */}
       <div className="stepper">
@@ -566,7 +566,7 @@ export default function Sell() {
               transition={{ type: 'spring', stiffness: 200, damping: 14 }}
             >
               <div className="checkmark"><Check size={36} color="#fff" /></div>
-              <h3>{isEdit ? 'Listing Updated!' : 'Listing Published!'}</h3>
+              <h3>{isEdit ? 'Listing updated' : 'Your listing is live'}</h3>
               <p className="muted">
                 {isEdit
                   ? 'Your changes are saved. Heading back to your dashboard…'

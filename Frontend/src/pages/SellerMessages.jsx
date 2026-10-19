@@ -24,7 +24,7 @@ export default function SellerMessages() {
 
   return (
     <div className="page">
-      <TopBar showBack title="Buyer Messages" showSearch={false} />
+      <TopBar showBack title="Buyer messages" showSearch={false} />
       <main className="page-main">
         <div className="sd-chats-help">
           <MessageCircle size={16} />

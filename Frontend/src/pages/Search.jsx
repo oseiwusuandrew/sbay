@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Search as SearchIcon, ArrowLeft, X, PackageSearch } from 'lucide-react';
+import { Search as SearchIcon, ArrowLeft, X, PackageSearch, MapPin } from 'lucide-react';
 import { sbay } from '../api/client';
 import BottomNav from '../components/BottomNav';
 import Footer from '../components/Footer';
@@ -21,6 +21,7 @@ export default function SearchPage() {
   const [params, setParams] = useSearchParams();
   const q = params.get('q') || '';
   const category = params.get('category') || '';
+  const school = params.get('school') || '';
   const sort = params.get('sort') || 'recent';
 
   const [draft, setDraft] = useState(q);
@@ -62,16 +63,17 @@ export default function SearchPage() {
     const req = { sort, limit: 60 };
     if (q) req.q = q;
     if (category) req.category = category;
+    if (school) req.school = school;
     sbay.searchPage(req)
       .then(({ items, total: t }) => { if (active) { setResults(items); setTotal(t); } })
       .catch((e) => { if (active) { setResults([]); setError(e.message || 'Search failed.'); } })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [q, category, sort]);
+  }, [q, category, school, sort]);
 
   const heading = q
     ? `Results for “${q}”`
-    : category ? category : 'All listings';
+    : category || (school ? `Listings at ${school}` : 'All listings');
 
   return (
     <div className="page">
@@ -120,7 +122,14 @@ export default function SearchPage() {
         <div className="search-head">
           <div>
             <h1 className="page-h1">{heading}</h1>
-            {!loading && !error && <p className="muted small">{total} item{total === 1 ? '' : 's'}</p>}
+            <div className="search-meta">
+              {!loading && !error && <span className="muted small">{total} item{total === 1 ? '' : 's'}</span>}
+              {school && (
+                <button className="filter-tag" onClick={() => update({ school: '' })} aria-label={`Remove campus filter ${school}`}>
+                  <MapPin size={13} aria-hidden /> {school} <X size={13} aria-hidden />
+                </button>
+              )}
+            </div>
           </div>
           <label className="sort-select">
             <span className="sr-only">Sort by</span>
@@ -139,8 +148,8 @@ export default function SearchPage() {
             <span className="empty-ic"><PackageSearch size={26} /></span>
             <h3>{q ? `No results for “${q}”` : 'Nothing here yet'}</h3>
             <p>{q ? 'Check the spelling, try a shorter word, or browse by category.' : 'Try another category.'}</p>
-            {(q || category) && (
-              <button className="btn btn-ghost" onClick={() => { setDraft(''); update({ q: '', category: '' }); }}>
+            {(q || category || school) && (
+              <button className="btn btn-ghost" onClick={() => { setDraft(''); update({ q: '', category: '', school: '' }); }}>
                 Clear search
               </button>
             )}

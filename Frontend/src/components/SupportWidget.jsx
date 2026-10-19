@@ -82,10 +82,12 @@ export default function SupportWidget() {
     const dx = e.clientX - d.startX;
     const dy = e.clientY - d.startY;
     if (Math.abs(dx) > 4 || Math.abs(dy) > 4) d.moved = true;
-    const maxX = window.innerWidth - 72;
+    const span = window.innerWidth - 110;
     const maxY = window.innerHeight - 140;
+    // Anchored bottom-left on mobile, bottom-right on desktop.
+    const rightAnchored = window.innerWidth >= 961;
     setPos({
-      x: clamp(d.startPosX + dx, 0, maxX),
+      x: rightAnchored ? clamp(d.startPosX + dx, -span, 0) : clamp(d.startPosX + dx, 0, span),
       y: clamp(d.startPosY + dy, -(maxY), 0),
     });
   };
@@ -106,9 +108,9 @@ export default function SupportWidget() {
 
   const validate = () => {
     const errs = {};
-    if (!form.email.trim()) errs.email = 'Email is required.';
-    if (!form.phone.trim() || form.phone.trim().length < 7) errs.phone = 'Valid phone number required.';
-    if (!form.message.trim()) errs.message = 'Please describe your problem.';
+    if (!form.email.trim()) errs.email = 'Enter your email address.';
+    if (!form.phone.trim() || form.phone.trim().length < 7) errs.phone = 'Enter a valid phone number.';
+    if (!form.message.trim()) errs.message = 'Tell us how we can help.';
     setFieldErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -130,7 +132,7 @@ export default function SupportWidget() {
       setFieldErrors({});
       setForm((f) => ({ ...f, message: '' }));
     } catch (err) {
-      setError(err?.message || 'Failed to send your message. Please try again.');
+      setError(err?.message || "We couldn't send your message. Please try again.");
     } finally {
       setSending(false);
     }
@@ -161,8 +163,8 @@ export default function SupportWidget() {
           <header className="support-header">
             <span className="support-header-icon"><Headphones size={18} /></span>
             <div>
-              <strong>Customer Support</strong>
-              <small>We usually respond shortly</small>
+              <strong>Help &amp; support</strong>
+              <small>Message the sBay team. We reply by email, usually within a few hours.</small>
             </div>
             <button className="support-close" onClick={() => setOpen(false)} aria-label="Close">
               <X size={16} />
@@ -172,7 +174,7 @@ export default function SupportWidget() {
           <form className="support-form" onSubmit={submit}>
             {isGuest && (
               <p className="support-guest-note">
-                No account needed — just fill in your details below.
+                You don't need an account. Leave your email and phone number so we can get back to you.
               </p>
             )}
 
@@ -191,12 +193,12 @@ export default function SupportWidget() {
             )}
 
             <label className="support-field">
-              <span>Email address *</span>
+              <span>Email</span>
               <div className={`support-input-wrap ${fieldErrors.email ? 'has-err' : ''}`}>
                 <Mail size={15} />
                 <input
                   type="email"
-                  placeholder="you@gmail.com"
+                  placeholder="you@example.com"
                   value={form.email}
                   onChange={(e) => { setForm((f) => ({ ...f, email: e.target.value })); setFieldErrors((x) => ({ ...x, email: '' })); }}
                   readOnly={!!user?.email}
@@ -206,7 +208,7 @@ export default function SupportWidget() {
             </label>
 
             <label className="support-field">
-              <span>Phone number *</span>
+              <span>Phone number</span>
               <div className={`support-input-wrap ${fieldErrors.phone ? 'has-err' : ''}`}>
                 <Phone size={15} />
                 <input
@@ -220,9 +222,9 @@ export default function SupportWidget() {
             </label>
 
             <label className="support-field">
-              <span>Describe your problem *</span>
+              <span>How can we help?</span>
               <textarea
-                placeholder="Tell us what's wrong..."
+                placeholder="Describe the issue, and include an order number if you have one."
                 value={form.message}
                 onChange={(e) => { setForm((f) => ({ ...f, message: e.target.value })); setFieldErrors((x) => ({ ...x, message: '' })); }}
                 rows={4}
@@ -232,7 +234,7 @@ export default function SupportWidget() {
             </label>
 
             {error && <p className="support-error" role="alert">{error}</p>}
-            {sent && <p className="support-success">Message sent! We will get back to you shortly.</p>}
+            {sent && <p className="support-success">Thanks, your message has been sent. We'll reply by email soon.</p>}
 
             <button
               type="submit"

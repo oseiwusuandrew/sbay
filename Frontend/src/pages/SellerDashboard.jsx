@@ -50,7 +50,7 @@ export default function SellerDashboard() {
     const ok = await confirm({
       title: 'Sign out?',
       body: 'You will need to sign in again to access your seller dashboard.',
-      confirmLabel: 'Sign Out',
+      confirmLabel: 'Sign out',
       danger: true,
     });
     if (ok) { logout(); navigate('/'); }
@@ -73,28 +73,28 @@ export default function SellerDashboard() {
     {
       path: '/seller-dashboard/listings',
       icon: Package,
-      label: 'My Listings',
+      label: 'My listings',
       desc: `${activeListingCount} active listing${activeListingCount !== 1 ? 's' : ''}`,
       badge: 0,
     },
     {
       path: '/seller-dashboard/sales',
       icon: TrendingUp,
-      label: 'Incoming Orders',
+      label: 'Incoming orders',
       desc: 'Manage & fulfil buyer orders',
       badge: pendingSales,
     },
     {
       path: '/seller-dashboard/purchases',
       icon: ShoppingBag,
-      label: 'My Purchases',
+      label: 'My purchases',
       desc: 'Track items you bought',
       badge: pendingPurchases,
     },
     {
       path: '/seller-dashboard/messages',
       icon: MessageCircle,
-      label: 'Buyer Messages',
+      label: 'Buyer messages',
       desc: 'Chat with your buyers',
       badge: 0,
     },
@@ -110,7 +110,7 @@ export default function SellerDashboard() {
     {
       path: `/seller/${user?.id || 's1'}`,
       icon: Store,
-      label: 'View Public Store',
+      label: 'View public store',
       desc: 'See what buyers see',
     },
     {
@@ -123,7 +123,7 @@ export default function SellerDashboard() {
 
   return (
     <div className="page">
-      <TopBar showSearch={false} title="Seller Dashboard" />
+      <TopBar showSearch={false} title="Seller dashboard" />
 
       <main className="page-main sd-page-main">
         {/* Hero */}
@@ -136,7 +136,7 @@ export default function SellerDashboard() {
             </div>
           </div>
           <button className="btn btn-primary sd-new-listing-btn" onClick={() => navigate('/sell')}>
-            <Plus size={16} /> New Listing
+            <Plus size={16} /> New listing
           </button>
         </section>
 
@@ -144,7 +144,7 @@ export default function SellerDashboard() {
         <section className="sd-stats">
           {[
             { icon: Package,   label: 'Listings',      value: activeListingCount },
-            { icon: BarChart2, label: 'Listing Views',  value: profileViews.toLocaleString() },
+            { icon: BarChart2, label: 'Listing views',  value: profileViews.toLocaleString() },
             { icon: Wallet,    label: 'Earnings',       value: `GH₵ ${totalEarnings.toLocaleString()}` },
           ].map(({ icon: Icon, label, value }) => (
             <div key={label} className="stat">

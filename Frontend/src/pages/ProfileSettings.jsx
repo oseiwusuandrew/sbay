@@ -1,173 +1,99 @@
 import { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, Camera, Lock, MapPin, LogOut, Trash2 } from 'lucide-react';
+import { Navigate } from 'react-router-dom';
+import { Check, Camera, MapPin, Loader2 } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import BottomNav from '../components/BottomNav';
 import Footer from '../components/Footer';
-import { sbay } from '../api/client';
+import Avatar from '../components/Avatar';
+import AccountSecurity from '../components/AccountSecurity';
 import { useAuth } from '../store/AuthContext';
-import { useConfirm } from '../store/ConfirmContext';
+import { resizeImage } from '../utils/image';
 import './pages.css';
 import './Profile.css';
 import './SellerSettings.css';
 
 export default function ProfileSettings() {
-  const navigate = useNavigate();
-  const confirm = useConfirm();
-  const { user, updateUser, logout } = useAuth();
-  const [settings, setSettings] = useState({
+  const { user, updateUser } = useAuth();
+  const [form, setForm] = useState({
     name: user?.name || '',
-    email: user?.email || '',
+    phone: user?.phone || '',
     location: user?.location || '',
     avatar: user?.avatar || '',
-    password: '',
-    newPassword: '',
   });
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role === 'seller') return <Navigate to="/seller/settings" replace />;
 
-  if (user?.role === 'seller') {
-    return <Navigate to="/seller-dashboard" replace />;
-  }
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  const handleAvatarUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setSettings((s) => ({ ...s, avatar: reader.result }));
-    reader.readAsDataURL(file);
+  const onPhoto = async (e) => {
+    try { set('avatar', await resizeImage(e.target.files?.[0])); }
+    catch (err) { setMsg({ ok: false, text: err.message }); }
+    e.target.value = '';
   };
 
-  const saveSettings = async (e) => {
+  const save = async (e) => {
     e.preventDefault();
+    setMsg(null);
+    if (form.name.trim().length < 2) { setMsg({ ok: false, text: 'Enter your full name.' }); return; }
+    setBusy(true);
     try {
-      await updateUser?.({
-        name: settings.name,
-        email: settings.email,
-        location: settings.location,
-        avatar: settings.avatar,
+      await updateUser({
+        name: form.name.trim(),
+        phone: form.phone.trim(),
+        location: form.location.trim(),
+        avatar: form.avatar,
       });
-      setSettings((s) => ({ ...s, password: '', newPassword: '' }));
-      navigate('/profile');
+      setMsg({ ok: true, text: 'Your changes have been saved.' });
     } catch (err) {
-      alert(err.message || 'Could not save changes.');
+      setMsg({ ok: false, text: err.message || "We couldn't save your changes." });
+    } finally {
+      setBusy(false);
     }
   };
 
   return (
     <div className="page">
-      <TopBar showSearch={false} title="Settings" />
-      <main className="page-main">
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm"
-          onClick={() => navigate('/profile')}
-          style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-        >
-          <ArrowLeft size={14} /> Back to dashboard
-        </button>
-        <form className="settings-form" onSubmit={saveSettings}>
+      <TopBar showBack showSearch={false} title="Settings" />
+      <main className="page-main settings-page">
+        <form className="settings-form" onSubmit={save}>
           <section className="card">
-            <h3 className="page-h2">Profile picture</h3>
+            <h3 className="page-h2">Profile</h3>
             <div className="avatar-row">
-              <div
-                className="avatar-preview"
-                style={{ backgroundImage: `url(${settings.avatar || user?.avatar})` }}
-              />
+              <Avatar src={form.avatar} name={form.name || user.name} size={72} />
               <label className="btn btn-ghost">
                 <Camera size={16} /> Change photo
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarUpload}
-                  hidden
-                />
+                <input type="file" accept="image/*" onChange={onPhoto} hidden />
               </label>
             </div>
-          </section>
-
-          <section className="card">
-            <h3 className="page-h2">Personal info</h3>
             <label className="field">
               <span>Full name</span>
-              <input
-                type="text"
-                value={settings.name}
-                onChange={(e) => setSettings({ ...settings, name: e.target.value })}
-              />
+              <input type="text" autoComplete="name" value={form.name} onChange={(e) => set('name', e.target.value)} />
             </label>
             <label className="field">
               <span>Email</span>
-              <input
-                type="email"
-                value={settings.email}
-                onChange={(e) => setSettings({ ...settings, email: e.target.value })}
-              />
+              <input type="email" value={user.email} readOnly aria-readonly="true" />
+              <span className="field-hint">Contact support if you need to change the email on your account.</span>
             </label>
             <label className="field">
-              <span><MapPin size={14} /> Pickup location</span>
-              <input
-                type="text"
-                value={settings.location}
-                onChange={(e) => setSettings({ ...settings, location: e.target.value })}
-                placeholder="Set only if you want a saved pickup location"
-              />
+              <span>Phone number</span>
+              <input type="tel" autoComplete="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="024 123 4567" />
             </label>
+            <label className="field">
+              <span><MapPin size={14} /> Default delivery location</span>
+              <input type="text" value={form.location} onChange={(e) => set('location', e.target.value)} placeholder="e.g. Greater Accra, East Legon" />
+              <span className="field-hint">Used to pre-fill checkout.</span>
+            </label>
+            {msg && <div className={msg.ok ? 'auth-hint' : 'auth-error'} role={msg.ok ? 'status' : 'alert'} style={{ marginTop: 12 }}>{msg.text}</div>}
+            <button className="btn btn-primary" type="submit" style={{ marginTop: 14 }} disabled={busy}>
+              {busy ? <Loader2 size={16} className="spin" /> : <Check size={16} />} Save changes
+            </button>
           </section>
-
-          <section className="card">
-            <h3 className="page-h2"><Lock size={16} /> Change password</h3>
-            <label className="field">
-              <span>Current password</span>
-              <input
-                type="password"
-                autoComplete="current-password"
-                value={settings.password}
-                onChange={(e) => setSettings({ ...settings, password: e.target.value })}
-              />
-            </label>
-            <label className="field">
-              <span>New password</span>
-              <input
-                type="password"
-                autoComplete="new-password"
-                value={settings.newPassword}
-                onChange={(e) => setSettings({ ...settings, newPassword: e.target.value })}
-              />
-            </label>
-          </section>
-
-          <button className="btn btn-primary" type="submit">
-            <Check size={16} /> Save changes
-          </button>
         </form>
 
-        <section className="card danger-zone">
-          <h3 className="page-h2">Danger zone</h3>
-          <button className="btn btn-ghost danger-text" onClick={() => { logout(); navigate('/'); }}>
-            <LogOut size={16} /> Sign out
-          </button>
-          <button className="btn btn-ghost danger-text" onClick={async () => {
-            const ok = await confirm({
-              title: 'Delete account?',
-              body: 'This permanently removes your account, order history and chat history. This cannot be undone.',
-              confirmLabel: 'Delete account',
-              danger: true,
-            });
-            if (!ok) return;
-            try {
-              await sbay.deleteMe();
-              logout();
-              navigate('/', { replace: true });
-            } catch (e) {
-              alert(e.response?.data?.message || e.message || 'Could not delete account.');
-            }
-          }}>
-            <Trash2 size={16} /> Delete account
-          </button>
-        </section>
+        <AccountSecurity />
       </main>
       <Footer />
       <BottomNav />

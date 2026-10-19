@@ -9,6 +9,8 @@ import { useAuth } from '../store/AuthContext';
 import { useUserNotifications } from '../hooks/useUserNotifications';
 import './DesktopNav.css';
 
+const AUTH_ROUTES = ['/login', '/signup', '/forgot-password'];
+
 const LINKS = [
   { to: '/home',       label: 'Home',       icon: HomeIc },
   { to: '/categories', label: 'Categories', icon: LayoutGrid },
@@ -25,8 +27,9 @@ export default function DesktopNav() {
 
   const [searchQ, setSearchQ] = useState('');
 
-  // Admin SPA has its own shell — never render the public marketplace nav there
-  if (pathname.startsWith('/admin')) return null;
+  // Admin SPA has its own shell, and the auth screens are focused flows
+  // with their own brand panel — no marketplace nav on either.
+  if (pathname.startsWith('/admin') || AUTH_ROUTES.includes(pathname)) return null;
 
   const goSell = () => {
     if (!user) navigate('/login?mode=seller&next=' + encodeURIComponent('/become-seller'));

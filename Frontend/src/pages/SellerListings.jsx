@@ -47,22 +47,22 @@ export default function SellerListings() {
 
   return (
     <div className="page">
-      <TopBar showBack title="My Listings" showSearch={false} />
+      <TopBar showBack title="My listings" showSearch={false} />
       <main className="page-main">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <p className="muted small">{listings.length} listing{listings.length !== 1 ? 's' : ''}</p>
           <button className="btn btn-primary" onClick={() => navigate('/sell')}>
-            <Plus size={15} /> New Listing
+            <Plus size={15} /> New listing
           </button>
         </div>
 
         {!loading && listings.length === 0 && (
           <div className="empty">
-            <Package size={48} color="#C9D4BD" />
+            <span className="empty-ic"><Package size={26} /></span>
             <h3>No listings yet</h3>
             <p>Create your first listing to start selling.</p>
             <button className="btn btn-primary" onClick={() => navigate('/sell')}>
-              <Plus size={16} /> Create Listing
+              <Plus size={16} /> Create listing
             </button>
           </div>
         )}

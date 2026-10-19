@@ -1,23 +1,22 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Camera, Check, Lock, MapPin, Store, Phone, Mail, Wallet, Bell, Plane,
-  ShieldCheck, ShieldAlert, Crown, LogOut, Trash2,
+  Camera, Check, MapPin, Store, Phone, Mail, Wallet,
+  ShieldCheck, ShieldAlert, Crown, Loader2,
 } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import BottomNav from '../components/BottomNav';
 import Footer from '../components/Footer';
-import { sbay } from '../api/client';
+import AccountSecurity from '../components/AccountSecurity';
 import { useAuth } from '../store/AuthContext';
-import { useConfirm } from '../store/ConfirmContext';
+import { resizeImage } from '../utils/image';
 import './pages.css';
 import './Auth.css';
 import './SellerSettings.css';
 
 export default function SellerSettings() {
   const navigate = useNavigate();
-  const confirm = useConfirm();
-  const { user, updateUser, logout } = useAuth();
+  const { user, updateUser } = useAuth();
 
   const [form, setForm] = useState({
     storeName: user?.sellerProfile?.storeName || '',
@@ -31,101 +30,55 @@ export default function SellerSettings() {
     payoutAccount: user?.payout?.account || '',
     payoutName: user?.payout?.accountName || user?.name || '',
 
-    vacationMode: user?.vacationMode || false,
-    notifyOrders:    user?.notifications?.orders ?? true,
-    notifyMessages:  user?.notifications?.messages ?? true,
-    notifyPromos:    user?.notifications?.promos ?? false,
-
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
   });
-  const [savedAt, setSavedAt] = useState(null);
-  const [pwErr, setPwErr] = useState('');
-  const [pwOk, setPwOk] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState(null);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  const handleAvatarUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => set('avatar', reader.result);
-    reader.readAsDataURL(file);
+  const handleAvatarUpload = async (e) => {
+    try { set('avatar', await resizeImage(e.target.files?.[0])); }
+    catch (err) { setSaveMsg({ ok: false, text: err.message }); }
+    e.target.value = '';
   };
 
-  const saveProfile = (e) => {
+  // Only fields the API actually stores are sent. (Vacation mode and
+  // notification toggles used to be shown here but were never saved.)
+  const saveProfile = async (e) => {
     e.preventDefault();
-    updateUser({
-      name: user?.name,
-      avatar: form.avatar,
-      email: form.email,
-      phone: form.phone,
-      location: form.location,
-      sellerProfile: { ...(user?.sellerProfile || {}), storeName: form.storeName, bio: form.bio },
-      payout: { method: form.payoutMethod, account: form.payoutAccount, accountName: form.payoutName },
-      vacationMode: form.vacationMode,
-      notifications: {
-        orders: form.notifyOrders,
-        messages: form.notifyMessages,
-        promos: form.notifyPromos,
-      },
-    });
-    setSavedAt(Date.now());
-    setTimeout(() => setSavedAt(null), 2400);
-  };
-
-  const changePassword = (e) => {
-    e.preventDefault();
-    setPwErr(''); setPwOk(false);
-    if (!form.currentPassword) return setPwErr('Enter your current password.');
-    if (!form.newPassword || form.newPassword.length < 6) return setPwErr('New password must be 6+ characters.');
-    if (form.newPassword !== form.confirmPassword) return setPwErr('Passwords do not match.');
-    // Mock: just succeed.
-    setForm((f) => ({ ...f, currentPassword: '', newPassword: '', confirmPassword: '' }));
-    setPwOk(true);
-    setTimeout(() => setPwOk(false), 2400);
-  };
-
-  const onLogout = async () => {
-    const ok = await confirm({
-      title: 'Sign out?',
-      body: 'You will need to sign in again to access your seller dashboard.',
-      confirmLabel: 'Sign Out',
-      danger: true,
-    });
-    if (ok) { logout(); navigate('/'); }
-  };
-
-  const [delErr, setDelErr] = useState('');
-  const onDeleteAccount = async () => {
-    setDelErr('');
-    const ok = await confirm({
-      title: 'Delete account?',
-      body: user?.role === 'seller'
-        ? 'This permanently removes your store, listings and chat history. You must have no pending orders. This cannot be undone.'
-        : 'This permanently removes your account, order history and chat history. This cannot be undone.',
-      confirmLabel: 'Delete account',
-      danger: true,
-    });
-    if (!ok) return;
+    setSaveMsg(null);
+    setSaving(true);
     try {
-      await sbay.deleteMe();
-      logout();
-      navigate('/', { replace: true });
-    } catch (e) {
-      setDelErr(e.response?.data?.message || e.message || 'Could not delete account. Please try again.');
+      await updateUser({
+        avatar: form.avatar,
+        phone: form.phone.trim(),
+        location: form.location.trim(),
+        sellerProfile: { storeName: form.storeName.trim(), bio: form.bio.trim(), location: form.location.trim() },
+        payout: { method: form.payoutMethod, account: form.payoutAccount, accountName: form.payoutName.trim() },
+      });
+      setSaveMsg({ ok: true, text: 'Your shop details have been saved.' });
+    } catch (err) {
+      setSaveMsg({ ok: false, text: err.message || "We couldn't save your changes." });
+    } finally {
+      setSaving(false);
     }
   };
 
   const verificationStatus = user?.verification?.status || (user?.verified ? 'verified' : 'unverified');
+  const VERIFY_COPY = {
+    verified: ['Verified seller', 'Your shop has been approved by the sBay team.'],
+    pending: ['Verification in review', "We're reviewing your application and will email you once it's done."],
+    rejected: ['Verification needs attention', user?.verification?.reason || 'Your application was not approved. Please resubmit your details.'],
+    unverified: ['Not verified yet', 'Get verified to earn the badge buyers look for.'],
+  };
+  const [verifyTitle, verifyText] = VERIFY_COPY[verificationStatus] || VERIFY_COPY.unverified;
   const planId = user?.subscription?.plan || 'free';
 
   return (
     <div className="page">
       <TopBar showBack showSearch={false} title="Settings" />
 
-      <main className="page-main">
+      <main className="page-main settings-page">
         {/* Quick links */}
         <section className="ss-quick">
           <div className={`ss-quick-row read-only ${verificationStatus === 'verified' ? 'is-ok' : 'is-warn'}`}>
@@ -133,12 +86,8 @@ export default function SellerSettings() {
               {verificationStatus === 'verified' ? <ShieldCheck size={18} /> : <ShieldAlert size={18} />}
             </span>
             <div>
-              <strong>{verificationStatus === 'verified' ? 'Verified seller' : 'Not yet verified'}</strong>
-              <p className="muted small">
-                {verificationStatus === 'verified'
-                  ? 'Your account has been approved by sBay admins.'
-                  : 'Admins are reviewing your application. You\'ll be notified once approved.'}
-              </p>
+              <strong>{verifyTitle}</strong>
+              <p className="muted small">{verifyText}</p>
             </div>
           </div>
           <button className="ss-quick-row" onClick={() => navigate('/seller/subscription')}>
@@ -184,7 +133,8 @@ export default function SellerSettings() {
             <h3 className="page-h2"><Mail size={16} /> Contact</h3>
             <label className="field">
               <span>Email</span>
-              <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} />
+              <input type="email" value={form.email} readOnly aria-readonly="true" />
+              <span className="field-hint">Contact support if you need to change the email on your account.</span>
             </label>
             <label className="field">
               <span><Phone size={14} /> Phone (+233)</span>
@@ -203,7 +153,7 @@ export default function SellerSettings() {
             <div className="pay-methods">
               {[
                 { id: 'mtn-momo', label: 'MTN MoMo' },
-                { id: 'vodafone-cash', label: 'Vodafone Cash' },
+                { id: 'vodafone-cash', label: 'Telecel Cash' },
                 { id: 'airteltigo-money', label: 'AirtelTigo Money' },
                 { id: 'bank', label: 'Bank transfer' },
               ].map((m) => (
@@ -225,7 +175,7 @@ export default function SellerSettings() {
                 onChange={(e) => set('payoutAccount', e.target.value.replace(/\D/g, ''))}
                 inputMode="numeric"
                 pattern="[0-9]*"
-                placeholder="number"
+                placeholder="024 123 4567"
               />
             </label>
             <label className="field">
@@ -238,116 +188,19 @@ export default function SellerSettings() {
             </label>
           </section>
 
-          {/* Preferences */}
-          <section className="card">
-            <h3 className="page-h2"><Bell size={16} /> Preferences</h3>
-            <Toggle
-              label="Vacation mode"
-              hint="Hide your listings from search until you turn this off."
-              icon={<Plane size={16} />}
-              checked={form.vacationMode}
-              onChange={(v) => set('vacationMode', v)}
-            />
-            <Toggle
-              label="Order notifications"
-              hint="Push & email when someone places an order."
-              checked={form.notifyOrders}
-              onChange={(v) => set('notifyOrders', v)}
-            />
-            <Toggle
-              label="Buyer messages"
-              hint="Notify me when buyers send a chat."
-              checked={form.notifyMessages}
-              onChange={(v) => set('notifyMessages', v)}
-            />
-            <Toggle
-              label="Promotions & tips"
-              hint="Occasional emails about boosts and selling tips."
-              checked={form.notifyPromos}
-              onChange={(v) => set('notifyPromos', v)}
-            />
-          </section>
-
+          {saveMsg && <div className={saveMsg.ok ? 'auth-hint' : 'auth-error'} role={saveMsg.ok ? 'status' : 'alert'}>{saveMsg.text}</div>}
           <div className="settings-actions">
-            <button className="btn btn-primary" type="submit">
-              <Check size={16} /> Save changes
+            <button className="btn btn-primary" type="submit" disabled={saving}>
+              {saving ? <Loader2 size={16} className="spin" /> : <Check size={16} />} Save changes
             </button>
-            {savedAt && <span className="muted small">Saved.</span>}
           </div>
         </form>
 
-        {/* Password */}
-        <form className="settings-form" onSubmit={changePassword}>
-          <section className="card">
-            <h3 className="page-h2"><Lock size={16} /> Change password</h3>
-            <label className="field">
-              <span>Current password</span>
-              <input
-                type="password"
-                value={form.currentPassword}
-                onChange={(e) => set('currentPassword', e.target.value)}
-              />
-            </label>
-            <label className="field">
-              <span>New password</span>
-              <input
-                type="password"
-                value={form.newPassword}
-                onChange={(e) => set('newPassword', e.target.value)}
-              />
-            </label>
-            <label className="field">
-              <span>Confirm new password</span>
-              <input
-                type="password"
-                value={form.confirmPassword}
-                onChange={(e) => set('confirmPassword', e.target.value)}
-              />
-            </label>
-
-            {pwErr && <div className="auth-error">{pwErr}</div>}
-            {pwOk && <div className="auth-hint">Password updated.</div>}
-
-            <button className="btn btn-primary" type="submit" style={{ marginTop: 10 }}>
-              Update password
-            </button>
-          </section>
-        </form>
-
-        {/* Danger zone */}
-        <section className="card danger-zone">
-          <h3 className="page-h2">Danger zone</h3>
-          <button className="btn btn-ghost danger-text" onClick={onLogout}>
-            <LogOut size={16} /> Sign out
-          </button>
-          <button className="btn btn-ghost danger-text" onClick={onDeleteAccount}>
-            <Trash2 size={16} /> Delete account
-          </button>
-          {delErr && <p style={{ color: 'var(--error)', fontSize: '.84rem', margin: '8px 0 0' }}>{delErr}</p>}
-        </section>
+        <AccountSecurity />
       </main>
 
       <Footer />
       <BottomNav />
     </div>
-  );
-}
-
-function Toggle({ label, hint, icon, checked, onChange }) {
-  return (
-    <button
-      type="button"
-      className={`toggle-row ${checked ? 'on' : ''}`}
-      onClick={() => onChange(!checked)}
-      aria-pressed={checked}
-    >
-      <div className="toggle-text">
-        <strong>{icon} {label}</strong>
-        {hint && <p className="muted small">{hint}</p>}
-      </div>
-      <span className={`switch ${checked ? 'on' : ''}`}>
-        <span className="dot" />
-      </span>
-    </button>
   );
 }

@@ -229,6 +229,7 @@ export const sbay = {
       id: school.id,
       label: school.label,
       city: school.city || '',
+      count: school.count || 0,
       categories: school.categories.map((c) => ({
         id: c.id,
         label: c.label,

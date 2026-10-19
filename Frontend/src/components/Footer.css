@@ -1,43 +1,88 @@
-/* Site footer — renders below page content (not fixed). The page wrapper
-   already reserves room for the mobile bottom nav. */
+/* Site footer — sits below page content. The page wrapper already
+   reserves room for the mobile bottom nav. */
 .site-footer {
   margin-top: auto;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  color: var(--text-muted);
+  position: relative;
+  color: rgba(255, 255, 255, 0.78);
+  background:
+    radial-gradient(700px 300px at 100% 0%, rgba(244, 196, 48, 0.10), transparent 60%),
+    #06301A;
   font-size: var(--fs-sm);
 }
+
+/* Red–gold–green stripe from the Ghana flag */
+.sf-flag { display: grid; grid-template-columns: 1fr 1fr 1fr; height: 4px; }
+.sf-flag span:nth-child(1) { background: #CE1126; }
+.sf-flag span:nth-child(2) { background: #FCD116; }
+.sf-flag span:nth-child(3) { background: #006B3F; }
+
 .sf-inner {
   max-width: var(--container);
   margin: 0 auto;
-  padding: 28px var(--gutter) 18px;
+  padding: 40px var(--gutter) 28px;
   display: grid;
-  gap: 24px;
+  gap: 32px;
 }
-.sf-brand { display: flex; flex-direction: column; gap: 8px; max-width: 340px; }
-.sf-brand .sbay-logo-image { height: 40px !important; }
-.sf-trust { display: inline-flex; align-items: center; gap: 6px; color: var(--primary-dark); font-weight: 700; font-size: var(--fs-xs); }
-.sf-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-.sf-cols div { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.sf-cols h4 { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .06em; color: var(--text); }
-.sf-cols a { overflow-wrap: anywhere; }
-.sf-cols a:hover, .sf-base a:hover { color: var(--primary); }
-.sf-base {
+@media (min-width: 900px) {
+  .sf-inner { grid-template-columns: minmax(260px, 1fr) 2fr; gap: 56px; padding-top: 52px; }
+}
+
+.sf-brand { display: flex; flex-direction: column; gap: 10px; max-width: 380px; }
+.sf-tagline { color: #fff; font-size: 1.15rem; font-weight: 800; letter-spacing: -0.01em; margin-top: 6px; }
+.sf-mission { line-height: 1.6; }
+.sf-trust {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  color: #F4C430;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.sf-pay { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.sf-pay li {
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.sf-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 20px; }
+@media (min-width: 640px) { .sf-cols { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.sf-cols div { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.sf-cols h4 {
+  color: #fff;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 2px;
+}
+.sf-cols a, .sf-link {
+  color: rgba(255, 255, 255, 0.75);
+  text-align: left;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  overflow-wrap: anywhere;
+  transition: color .15s ease;
+}
+.sf-cols a:hover, .sf-link:hover { color: #fff; }
+.sf-link svg, .sf-mail svg { flex-shrink: 0; opacity: 0.7; }
+.site-footer :focus-visible { box-shadow: 0 0 0 3px rgba(244, 196, 48, 0.6); }
+
+.sf-base { border-top: 1px solid rgba(255, 255, 255, 0.1); }
+.sf-base-inner {
   max-width: var(--container);
   margin: 0 auto;
-  padding: 14px var(--gutter) 18px;
-  border-top: 1px solid var(--border);
+  padding: 16px var(--gutter) 20px;
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px 16px;
   flex-wrap: wrap;
-  font-size: var(--fs-xs);
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
 }
-.sf-base a { color: var(--primary); font-weight: 700; }
-
-@media (min-width: 840px) {
-  .sf-inner { grid-template-columns: 1fr 1.4fr; padding-top: 40px; }
-}
-@media (max-width: 480px) {
-  .sf-cols { grid-template-columns: 1fr 1fr; }
-}
+.sf-base a { color: #F4C430; font-weight: 700; }
+.sf-base a:hover { text-decoration: underline; text-underline-offset: 2px; }

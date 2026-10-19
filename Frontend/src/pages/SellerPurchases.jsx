@@ -39,7 +39,7 @@ export default function SellerPurchases() {
 
   return (
     <div className="page">
-      <TopBar showBack title="My Purchases" showSearch={false} />
+      <TopBar showBack title="My purchases" showSearch={false} />
       <main className="page-main">
         <p className="muted small" style={{ marginBottom: 12 }}>
           Orders you've placed as a buyer. Track delivery, message sellers and confirm receipt here.
@@ -79,7 +79,7 @@ export default function SellerPurchases() {
               </button>
               {o.status === 'delivered' && (
                 <button className="btn btn-primary" onClick={() => onConfirmReceipt(o.id)}>
-                  <Check size={14} /> Confirm Receipt
+                  <Check size={14} /> I received it
                 </button>
               )}
               {o.status === 'shipped' && (
@@ -87,7 +87,7 @@ export default function SellerPurchases() {
               )}
               {o.status === 'completed' && (
                 <button className="btn btn-ghost small" onClick={() => navigate(`/product/${o.id}`)}>
-                  <Star size={14} /> Leave Review
+                  <Star size={14} /> Rate seller
                 </button>
               )}
             </div>

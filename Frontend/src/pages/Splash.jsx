@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ShoppingBag, Heart, Tag, GraduationCap } from 'lucide-react';
-import logoImage from '../assets/logo.png';
+import Logo from '../components/Logo';
 import { sbay } from '../api/client';
 import './Splash.css';
 
@@ -44,7 +44,7 @@ export default function Splash() {
           animate={{ y: 0, opacity: 1 }}
           transition={{ ...SPRING, delay: 0.2 }}
         >
-          <img src={logoImage} alt="sBay Logo" className="splash-logo-img" />
+          <Logo size="xl" />
         </motion.div>
 
         <motion.p

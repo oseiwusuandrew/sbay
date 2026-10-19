@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
-  ArrowRight, ShieldCheck, BadgeCheck, Smartphone, Search as SearchIcon,
-  MapPin, Package, Star, Wallet, MessageCircle, PackageCheck, Plus,
+  ArrowRight, BadgeCheck, Smartphone, Search as SearchIcon,
+  MapPin, Package, Star, Wallet, MessageCircle, PackageCheck, Plus, ChevronDown,
+  Navigation, Loader2, GraduationCap,
 } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import BottomNav from '../components/BottomNav';
 import Footer from '../components/Footer';
-import CampusBanner from '../components/CampusBanner';
+import CampusPicker from '../components/CampusPicker';
 import ProductCard, { ProductGrid, ProductRail } from '../components/ProductCard';
 import Avatar from '../components/Avatar';
 import { sbay } from '../api/client';
@@ -17,55 +18,110 @@ import { SkeletonGrid, Skeleton } from '../components/Skeleton';
 import './pages.css';
 import './Home.css';
 
+const sameSchool = (p, campus) => {
+  if (!campus) return false;
+  const a = (p.school || '').toLowerCase();
+  const b = campus.label.toLowerCase();
+  return !!a && (a === b || a.includes(b) || b.includes(a));
+};
+
+/** Unique sellers from a set of listings, best rated first. */
+function sellersFrom(products, limit = 8) {
+  const map = new Map();
+  const seen = new Set(); // the same listing can be in both "new" and "popular"
+  for (const p of products) {
+    if (!p.sellerId || !p.sellerName || seen.has(p.id)) continue;
+    seen.add(p.id);
+    const cur = map.get(p.sellerId) || {
+      id: p.sellerId, name: p.sellerName, avatar: p.sellerAvatar, verified: p.sellerVerified,
+      rating: p.sellerRating, reviews: p.sellerReviews, location: p.sellerLocation, listings: 0,
+    };
+    cur.listings += 1;
+    map.set(p.sellerId, cur);
+  }
+  return [...map.values()]
+    .sort((a, b) => (b.verified - a.verified) || (b.rating - a.rating) || (b.listings - a.listings))
+    .slice(0, limit);
+}
+
 export default function Home() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { campus } = useCampus();
-  const [feed, setFeed] = useState({ trending: [], recent: [], sellers: [] });
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [failed, setFailed] = useState(false);
+  const { campus, schools, loading: schoolsLoading, locStatus, autoDetect } = useCampus();
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const closePicker = useCallback(() => setPickerOpen(false), []);
   const [query, setQuery] = useState('');
-  const [showAllLocal, setShowAllLocal] = useState(false);
+
+  // Nationwide feed (always loaded — it's cached and backs the
+  // "other campuses" and no-campus sections).
+  const [feed, setFeed] = useState({ trending: [], recent: [], sellers: [] });
+  const [feedLoading, setFeedLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+
+  // Campus-scoped feed, queried from the API rather than filtered out of
+  // the 24 nationwide items (which missed most of a campus's listings).
+  const [local, setLocal] = useState({ recent: [], popular: [] });
+  const [localLoading, setLocalLoading] = useState(false);
 
   useEffect(() => {
     let active = true;
     sbay.getHomeFeed()
       .then((f) => { if (active) setFeed(f); })
       .catch(() => { if (active) setFailed(true); })
-      .finally(() => { if (active) setLoading(false); });
-    sbay.getCategories()
-      .then((cats) => { if (active) setCategories(cats.filter((c) => c.id !== 'all').slice(0, 10)); })
-      .catch(() => {});
+      .finally(() => { if (active) setFeedLoading(false); });
     return () => { active = false; };
   }, []);
 
-  const { trending, recent, sellers } = feed;
+  useEffect(() => {
+    if (!campus) { setLocal({ recent: [], popular: [] }); return undefined; }
+    let active = true;
+    setLocalLoading(true);
+    const scoped = campus.id === 'others'
+      ? sbay.getProductsByScope({ schoolId: 'others' }).then((rows) => [rows, [...rows].sort((a, b) => (b.views || 0) - (a.views || 0))])
+      : Promise.all([
+        sbay.getAllProducts({ school: campus.label, sort: 'recent', limit: 15 }),
+        sbay.getAllProducts({ school: campus.label, sort: 'popular', limit: 12 }),
+      ]);
+    scoped
+      .then(([recent, popular]) => { if (active) setLocal({ recent, popular }); })
+      .catch(() => { if (active) setLocal({ recent: [], popular: [] }); })
+      .finally(() => { if (active) setLocalLoading(false); });
+    return () => { active = false; };
+  }, [campus]);
 
-  // Home used to filter only the ~24 items already on screen; real
-  // search lives on /search and queries the whole catalogue.
+  const campusSchool = useMemo(
+    () => (campus ? schools.find((s) => s.id === campus.id) || campus : null),
+    [campus, schools],
+  );
+
+  // Categories: this campus's own categories when one is set, else global.
+  const [globalCats, setGlobalCats] = useState([]);
+  useEffect(() => {
+    sbay.getCategories()
+      .then((cats) => setGlobalCats(cats.filter((c) => c.id !== 'all')))
+      .catch(() => setGlobalCats([]));
+  }, []);
+  const categories = (campusSchool?.categories?.length ? campusSchool.categories : globalCats).slice(0, 10);
+
+  const otherCampuses = useMemo(
+    () => feed.recent.filter((p) => !sameSchool(p, campus)).slice(0, 10),
+    [feed.recent, campus],
+  );
+  const localSellers = useMemo(() => sellersFrom([...local.recent, ...local.popular]), [local]);
+  const nationalSellers = feed.sellers.filter((s) => s.verified);
+  const topCampuses = useMemo(
+    () => [...schools].filter((s) => s.id !== 'others').sort((a, b) => (b.count || 0) - (a.count || 0)).slice(0, 8),
+    [schools],
+  );
+
   const submitSearch = (e) => {
     e.preventDefault();
     const q = query.trim();
-    navigate(q ? `/search?q=${encodeURIComponent(q)}` : '/search');
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    if (campus && campus.id !== 'others') params.set('school', campus.label);
+    navigate(`/search${params.toString() ? `?${params}` : ''}`);
   };
-
-  const localProducts = useMemo(() => {
-    if (!campus) return [];
-    const school = campus.label.toLowerCase();
-    const city = (campus.city || '').toLowerCase();
-    const seen = new Set();
-    return [...recent, ...trending].filter((p) => {
-      if (seen.has(p.id)) return false;
-      seen.add(p.id);
-      const ps = (p.school || '').toLowerCase();
-      const pc = (p.city || '').toLowerCase();
-      return (ps && (ps.includes(school) || school.includes(ps))) || (city && pc && (pc.includes(city) || city.includes(pc)));
-    });
-  }, [campus, trending, recent]);
-
-  const featuredSellers = sellers.filter((s) => s.verified);
-  const empty = !loading && !failed && trending.length === 0 && recent.length === 0;
 
   const goSell = () => {
     if (!user) navigate('/login?mode=seller&next=' + encodeURIComponent('/become-seller'));
@@ -73,175 +129,277 @@ export default function Home() {
     else navigate('/sell');
   };
 
+  const firstName = user?.name?.split(' ')[0];
+
   return (
     <div className="home page">
       <TopBar hideActions={false} searchPlaceholder="Search phones, books, sneakers…" />
 
-      <section className="hero">
+      {/* ── Location-aware header ── */}
+      <section className={`hero ${campus ? 'hero--local' : ''}`}>
         <div className="hero-inner">
           <div className="hero-copy">
-            <span className="hero-eyebrow"><ShieldCheck size={14} /> Escrow-protected campus marketplace</span>
-            <h1>Buy and sell on campus, <span>without the risk.</span></h1>
-            <p className="hero-sub">
-              Your money is held safely until you confirm the item reached you.
-              Shop from verified students at UG, KNUST, UCC and more.
-            </p>
+            <button className="loc-pill" onClick={() => setPickerOpen(true)} aria-haspopup="dialog">
+              <MapPin size={15} aria-hidden />
+              <span>{campus ? campus.label : 'All campuses'}</span>
+              {campus?.city && <em>{campus.city}</em>}
+              <ChevronDown size={15} aria-hidden />
+            </button>
+
+            {campus ? (
+              <>
+                <h1>{firstName ? `${firstName}, here's` : "Here's"} what's on sale at <span>{campus.label}</span></h1>
+                <p className="hero-sub">Listings from students on your campus, so you can meet up and collect the same day. Every payment is held in escrow until you've got your item.</p>
+              </>
+            ) : (
+              <>
+                <h1>Buy and sell on campus, <span>without the risk.</span></h1>
+                <p className="hero-sub">Your money is held safely until you confirm the item has reached you. Choose your campus to see listings you can pick up nearby.</p>
+              </>
+            )}
+
             <form className="hero-search" onSubmit={submitSearch} role="search">
               <SearchIcon size={20} aria-hidden />
               <input
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="What are you looking for?"
+                placeholder={campus ? `Search listings at ${campus.label}` : 'What are you looking for?'}
                 aria-label="Search sBay"
               />
               <button type="submit" className="btn btn-primary">Search</button>
             </form>
+
             {categories.length > 0 && (
-              <div className="hero-cats" aria-label="Popular categories">
+              <div className="hero-cats" aria-label="Categories">
                 {categories.map((c) => (
-                  <Link key={c.id} className="chip" to={`/search?category=${encodeURIComponent(c.label)}`}>
-                    {c.label}
+                  <Link
+                    key={c.id}
+                    className="chip"
+                    to={`/search?category=${encodeURIComponent(c.label)}${campus && campus.id !== 'others' ? `&school=${encodeURIComponent(campus.label)}` : ''}`}
+                  >
+                    {c.label}{c.count ? <span className="chip-count">{c.count}</span> : null}
                   </Link>
                 ))}
               </div>
             )}
           </div>
 
-          <ul className="hero-trust">
+          <ul className="hero-trust" aria-label="Why sBay">
             <li>
               <span className="ht-ic"><Wallet size={18} /></span>
-              <div><strong>Pay safely</strong><small>Funds held until you confirm delivery</small></div>
+              <div><strong>Escrow protection</strong><small>Sellers are paid only after you confirm delivery</small></div>
             </li>
             <li>
               <span className="ht-ic"><BadgeCheck size={18} /></span>
-              <div><strong>Verified sellers</strong><small>Student ID checks by the sBay team</small></div>
+              <div><strong>Verified students</strong><small>Student IDs checked by the sBay team</small></div>
             </li>
             <li>
               <span className="ht-ic"><Smartphone size={18} /></span>
-              <div><strong>MoMo or card</strong><small>MTN, Telecel, AirtelTigo &amp; Visa via Paystack</small></div>
+              <div><strong>Pay your way</strong><small>MoMo or card, secured by Paystack</small></div>
             </li>
           </ul>
         </div>
       </section>
 
-      <CampusBanner />
-
       <main className="home-main">
         {failed && (
           <div className="notice notice--warn" role="alert">
-            We couldn't load listings right now. The server may be waking up, so try again in a moment.
+            We couldn't load listings. The server may be starting up, so please try again in a moment.
             <button className="link-btn" onClick={() => window.location.reload()}>Retry</button>
           </div>
         )}
 
-        {empty ? (
-          <section className="section">
-            <div className="empty">
-              <span className="empty-ic"><Package size={26} /></span>
-              <h3>No listings yet</h3>
-              <p className="muted">Be the first to sell something on your campus.</p>
-              <button className="btn btn-primary" onClick={goSell}><Plus size={16} /> List an item</button>
-            </div>
-          </section>
-        ) : (
+        {campus ? (
           <>
-            {campus && localProducts.length > 0 && (
-              <section className="section">
-                <SectionHead
-                  title={<><MapPin size={18} className="sh-ic" /> Near you at {campus.label}</>}
-                  action={localProducts.length > 5
-                    ? { label: showAllLocal ? 'Show less' : `See all ${localProducts.length}`, onClick: () => setShowAllLocal((v) => !v) }
-                    : null}
-                />
+            {/* ── Campus feed ── */}
+            <section className="section">
+              <SectionHead
+                title={<>New at {campus.label}</>}
+                sub="Latest listings from students on your campus"
+                action={local.recent.length ? { label: 'See all', onClick: () => navigate(`/search?school=${encodeURIComponent(campus.label)}`) } : null}
+              />
+              {localLoading ? <SkeletonGrid count={5} /> : local.recent.length === 0 ? (
+                <div className="empty empty--compact">
+                  <span className="empty-ic"><GraduationCap size={26} /></span>
+                  <h3>No listings at {campus.label} yet</h3>
+                  <p>Be the first to sell on your campus, or browse listings from other campuses below.</p>
+                  <div className="empty-actions">
+                    <button className="btn btn-primary" onClick={goSell}><Plus size={16} /> List an item</button>
+                    <button className="btn btn-ghost" onClick={() => setPickerOpen(true)}>Change campus</button>
+                  </div>
+                </div>
+              ) : (
                 <ProductGrid>
-                  {(showAllLocal ? localProducts : localProducts.slice(0, 5)).map((p) => <ProductCard key={p.id} p={p} />)}
+                  {local.recent.slice(0, 10).map((p) => <ProductCard key={p.id} p={p} />)}
                 </ProductGrid>
+              )}
+            </section>
+
+            {local.popular.length > 2 && (
+              <section className="section">
+                <SectionHead title={<>Popular at {campus.label}</>} sub="Most viewed on your campus this week" />
+                <ProductRail label={`Popular at ${campus.label}`}>
+                  {local.popular.map((p, i) => <ProductCard key={p.id} p={p} rank={i + 1} variant="rail" />)}
+                </ProductRail>
               </section>
             )}
 
+            {localSellers.length > 0 && (
+              <section className="section">
+                <SectionHead title={<>Sellers at {campus.label}</>} sub="Shops you can meet up with on campus" />
+                <SellerRail sellers={localSellers} />
+              </section>
+            )}
+
+            {otherCampuses.length > 0 && (
+              <section className="section">
+                <SectionHead
+                  title="From other campuses"
+                  sub="Sellers can arrange delivery to you"
+                  action={{ label: 'Browse all', onClick: () => navigate('/search') }}
+                />
+                <ProductGrid>
+                  {otherCampuses.map((p) => <ProductCard key={p.id} p={p} />)}
+                </ProductGrid>
+              </section>
+            )}
+          </>
+        ) : (
+          <>
+            {/* ── No campus yet: make choosing one the first step ── */}
+            <section className="section campus-choose" aria-labelledby="choose-title">
+              <div className="campus-choose-head">
+                <div>
+                  <h2 id="choose-title" className="section-title">Shop your campus</h2>
+                  <p className="section-sub">Pick where you study to see listings you can collect nearby.</p>
+                </div>
+                <button className="btn btn-soft" onClick={autoDetect} disabled={locStatus === 'prompting'}>
+                  {locStatus === 'prompting' ? <Loader2 size={16} className="spin" /> : <Navigation size={16} />}
+                  {locStatus === 'prompting' ? 'Locating…' : 'Use my location'}
+                </button>
+              </div>
+              {schoolsLoading ? <Skeleton h={88} r={16} /> : (
+                <div className="campus-grid">
+                  {topCampuses.map((s) => (
+                    <CampusTile key={s.id} school={s} />
+                  ))}
+                  <button className="campus-tile campus-tile--more" onClick={() => setPickerOpen(true)}>
+                    <strong>Other campus</strong>
+                    <span>Search the full list</span>
+                  </button>
+                </div>
+              )}
+            </section>
+
             <section className="section">
               <SectionHead
-                title="Trending on campus"
+                title="Trending across Ghana"
                 sub="Most viewed this week"
                 action={{ label: 'View all', onClick: () => navigate('/trending') }}
               />
-              {loading ? <SkeletonGrid count={5} /> : (
+              {feedLoading ? <SkeletonGrid count={5} /> : feed.trending.length === 0 ? (
+                <div className="empty empty--compact">
+                  <span className="empty-ic"><Package size={26} /></span>
+                  <h3>No listings yet</h3>
+                  <p>Be the first to sell something on sBay.</p>
+                  <button className="btn btn-primary" onClick={goSell}><Plus size={16} /> List an item</button>
+                </div>
+              ) : (
                 <ProductRail label="Trending listings">
-                  {trending.map((p, i) => <ProductCard key={p.id} p={p} rank={i + 1} variant="rail" />)}
+                  {feed.trending.map((p, i) => <ProductCard key={p.id} p={p} rank={i + 1} variant="rail" />)}
                 </ProductRail>
               )}
             </section>
 
-            {(loading || featuredSellers.length > 0) && (
+            {nationalSellers.length > 0 && (
               <section className="section">
-                <SectionHead title="Trusted campus sellers" sub="Verified by the sBay team" />
-                {loading ? <Skeleton h={96} r={16} /> : (
-                  <div className="seller-rail">
-                    {featuredSellers.map((s) => (
-                      <Link key={s.id} to={`/seller/${s.id}`} className="seller-tile">
-                        <Avatar src={s.avatar} name={s.name} size={52} />
-                        <div className="seller-tile-info">
-                          <strong>{s.name} <BadgeCheck size={14} className="pcard-verified" aria-label="Verified" /></strong>
-                          <span className="seller-tile-rating">
-                            <Star size={13} fill="currentColor" aria-hidden /> {Number(s.rating || 0).toFixed(1)}
-                            <em>({s.reviews} review{s.reviews === 1 ? '' : 's'})</em>
-                          </span>
-                          {s.location && <span className="seller-tile-loc">{s.location}</span>}
-                        </div>
-                        <ArrowRight size={16} className="seller-tile-chev" />
-                      </Link>
-                    ))}
-                  </div>
-                )}
+                <SectionHead title="Trusted sellers" sub="Verified by the sBay team" />
+                <SellerRail sellers={nationalSellers} />
               </section>
             )}
 
-            <section className="section">
-              <SectionHead
-                title="Just listed"
-                action={{ label: 'Browse categories', onClick: () => navigate('/categories') }}
-              />
-              {loading ? <SkeletonGrid count={10} /> : (
+            {feed.recent.length > 0 && (
+              <section className="section">
+                <SectionHead title="Just listed" action={{ label: 'Browse all', onClick: () => navigate('/search') }} />
                 <ProductGrid>
-                  {recent.map((p) => <ProductCard key={p.id} p={p} />)}
+                  {feed.recent.slice(0, 10).map((p) => <ProductCard key={p.id} p={p} />)}
                 </ProductGrid>
-              )}
-            </section>
+              </section>
+            )}
           </>
         )}
 
         <section className="how" aria-labelledby="how-title">
-          <h2 id="how-title">How sBay keeps you safe</h2>
+          <h2 id="how-title">How sBay keeps your money safe</h2>
           <ol className="how-steps">
             <li>
               <span className="how-ic"><Wallet size={20} /></span>
-              <strong>Pay into escrow</strong>
-              <p>Checkout with MoMo or card. sBay holds the money, not the seller.</p>
+              <strong>1. Pay into escrow</strong>
+              <p>Check out with MoMo or card. sBay holds the payment, not the seller.</p>
             </li>
             <li>
               <span className="how-ic"><MessageCircle size={20} /></span>
-              <strong>Meet or get delivery</strong>
-              <p>Chat with the seller in-app to arrange pickup on campus.</p>
+              <strong>2. Meet up or get it delivered</strong>
+              <p>Chat with the seller in the app to agree a pickup spot on campus.</p>
             </li>
             <li>
               <span className="how-ic"><PackageCheck size={20} /></span>
-              <strong>Confirm and release</strong>
-              <p>Only when you confirm you've got it does the seller get paid.</p>
+              <strong>3. Confirm, then they're paid</strong>
+              <p>The seller receives the money only after you confirm you have the item.</p>
             </li>
           </ol>
           <div className="how-cta">
             <div>
-              <strong>Got something to sell?</strong>
-              <p className="muted">List it in under a minute and reach students on your campus.</p>
+              <strong>Have something to sell?</strong>
+              <p>List it in a minute and reach buyers{campus ? ` at ${campus.label}` : ' on your campus'}.</p>
             </div>
             <button className="btn btn-secondary" onClick={goSell}><Plus size={16} /> Start selling</button>
           </div>
         </section>
       </main>
 
+      <CampusPicker open={pickerOpen} onClose={closePicker} />
       <Footer />
       <BottomNav />
+    </div>
+  );
+}
+
+function CampusTile({ school }) {
+  const { setCampus } = useCampus();
+  return (
+    <button className="campus-tile" onClick={() => setCampus(school)}>
+      <span className="campus-tile-ic"><GraduationCap size={18} /></span>
+      <strong>{school.label}</strong>
+      <span>{[school.city, school.count ? `${school.count} listing${school.count === 1 ? '' : 's'}` : null].filter(Boolean).join(' · ')}</span>
+    </button>
+  );
+}
+
+function SellerRail({ sellers }) {
+  return (
+    <div className="seller-rail">
+      {sellers.map((s) => (
+        <Link key={s.id} to={`/seller/${s.id}`} className="seller-tile">
+          <Avatar src={s.avatar} name={s.name} size={52} />
+          <div className="seller-tile-info">
+            <strong>
+              <span className="seller-tile-name">{s.name}</span>
+              {s.verified && <BadgeCheck size={14} className="pcard-verified" aria-label="Verified seller" />}
+            </strong>
+            <span className="seller-tile-rating">
+              <Star size={13} fill="currentColor" aria-hidden />
+              {Number(s.rating || 0) > 0 ? Number(s.rating).toFixed(1) : 'New'}
+              {s.reviews > 0 && <em>({s.reviews} review{s.reviews === 1 ? '' : 's'})</em>}
+            </span>
+            <span className="seller-tile-loc">
+              {[s.location, s.listings ? `${s.listings} listing${s.listings === 1 ? '' : 's'}` : null].filter(Boolean).join(' · ')}
+            </span>
+          </div>
+          <ArrowRight size={16} className="seller-tile-chev" />
+        </Link>
+      ))}
     </div>
   );
 }

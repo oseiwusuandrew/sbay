@@ -7,6 +7,13 @@ import {
 } from 'lucide-react';
 import { useAdminConfirm } from './AdminConfirmContext';
 
+const PAYOUT_LABEL = {
+  'mtn-momo': 'MTN MoMo',
+  'vodafone-cash': 'Telecel Cash',
+  'airteltigo-money': 'AirtelTigo Money',
+  bank: 'Bank transfer',
+};
+
 /**
  * Generic user deep-dive — works for any role (buyer / seller / admin).
  *
@@ -243,7 +250,7 @@ export default function AdminUserDetail() {
               )}
               {user.role === 'seller' && (
                 <>
-                  <tr><th>Payout method</th><td>{user.payout?.method || 'not set'}</td></tr>
+                  <tr><th>Payout method</th><td>{PAYOUT_LABEL[user.payout?.method] || user.payout?.method || 'Not set'}</td></tr>
                   <tr><th>Payout number</th><td>{user.payout?.account || 'not set'}</td></tr>
                   <tr><th>Payout name</th><td>{user.payout?.accountName || 'not set'}</td></tr>
                 </>

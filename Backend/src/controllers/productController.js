@@ -13,6 +13,9 @@ export function invalidateCatalogCache() { catalogCache = { data: null, at: 0 };
 let homeFeedCache = { data: null, at: 0 };
 const HOME_FEED_CACHE_TTL = 60 * 1000; // 1 minute
 
+// Joining words stay lowercase mid-name: "University of Ghana", not "Of".
+const MINOR_WORDS = new Set(['of', 'and', 'the', 'for', 'in', 'at', 'on', '&']);
+
 function toTitleCase(value) {
   const text = String(value || '').trim();
   if (!text) return '';
@@ -21,7 +24,7 @@ function toTitleCase(value) {
     .toLowerCase()
     .split(/\s+/)
     .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .map((part, i) => (i > 0 && MINOR_WORDS.has(part) ? part : part.charAt(0).toUpperCase() + part.slice(1)))
     .join(' ');
 }
 
