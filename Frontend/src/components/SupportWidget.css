@@ -179,87 +179,8 @@ body.support-open {
 }
 
 /* --- Messages --- */
-.support-messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 14px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  background: #f9fafb;
-}
-.support-empty {
-  color: #888;
-  font-size: 13px;
-  text-align: center;
-  margin: auto;
-  padding: 20px 0;
-}
-
-.support-msg {
-  max-width: 82%;
-  padding: 10px 14px;
-  border-radius: 14px;
-  font-size: 14px;
-  line-height: 1.45;
-  word-break: break-word;
-}
-.support-msg.user {
-  align-self: flex-end;
-  background: #0a7e3e;
-  color: #fff;
-  border-bottom-right-radius: 4px;
-}
-.support-msg.admin {
-  align-self: flex-start;
-  background: #e8e8e8;
-  color: #222;
-  border-bottom-left-radius: 4px;
-}
 
 /* --- Input bar --- */
-.support-input {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  padding: 10px 12px;
-  border-top: 1px solid #eee;
-  background: #fff;
-  flex-shrink: 0;
-}
-.support-input textarea {
-  flex: 1;
-  resize: none;
-  border: 1px solid #ddd;
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-size: 14px;
-  font-family: inherit;
-  max-height: 80px;
-}
-.support-input textarea:focus {
-  outline: none;
-  border-color: #0a7e3e;
-}
-.support-input button {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: #0a7e3e;
-  color: #fff;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: background .15s;
-}
-.support-input button:hover { background: #0d9c4d; }
-.support-input button:disabled {
-  background: #ccc;
-  cursor: not-allowed;
-}
 
 /* --- Form feedback --- */
 .support-error {
@@ -301,15 +222,6 @@ body.support-open {
   font-weight: 600;
   margin: 0;
   border-left: 3px solid #0a7e3e;
-}
-
-/* --- Spinner --- */
-.spin {
-  animation: spin 1s linear infinite;
-}
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
 }
 
 /* --- Small screens --- */

@@ -1,5 +1,4 @@
-function escapeRegex(str) { return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
-
+import { escapeRegex } from '../utils/regex.js';
 import { SupportTicket } from '../models/SupportTicket.js';
 import { HttpError } from '../utils/httpError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';

@@ -78,15 +78,6 @@ function titleFor(pathname) {
   return 'Admin';
 }
 
-/** Determine which nav group should be open for the active route. */
-function activeGroup(pathname) {
-  if (pathname.startsWith('/admin/users')) return 'users';
-  if (pathname.startsWith('/admin/products') || pathname.startsWith('/admin/plans')) return 'catalog';
-  if (pathname.startsWith('/admin/orders') || pathname.startsWith('/admin/chats')) return 'commerce';
-  if (pathname.startsWith('/admin/verification')) return 'verification';
-  return null;
-}
-
 export default function AdminLayout() {
   const navigate = useNavigate();
   const { pathname } = useLocation();

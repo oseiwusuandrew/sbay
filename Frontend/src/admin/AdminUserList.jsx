@@ -22,7 +22,8 @@ export default function AdminUserList({
   title,
   description,
   showRoleFilter = true,
-  rowLinkSeller = false,
+  verificationStatus = '',   // e.g. 'pending' for the verification queue
+  initialRestricted = '',    // honours dashboard deep links (?restricted=true)
   allowDelete = false,
   initialQuery = '',
 }) {
@@ -33,7 +34,7 @@ export default function AdminUserList({
   const [q, setQ]                   = useState(initialQuery);
   const [role, setRole]             = useState('');
   const [verified, setVerified]     = useState('');
-  const [restricted, setRestricted] = useState('');
+  const [restricted, setRestricted] = useState(initialRestricted);
   const [busy, setBusy]             = useState(false);
   const [err, setErr]               = useState('');
 
@@ -47,6 +48,7 @@ export default function AdminUserList({
       if (effectiveRole) params.role = effectiveRole;
       if (verified)   params.verified = verified;
       if (restricted) params.restricted = restricted;
+      if (verificationStatus) params.verification = verificationStatus;
       const { data } = await adminApi.get('/users', { params });
       // Newest first
       const sorted = [...(data.items || [])].sort(
@@ -55,7 +57,7 @@ export default function AdminUserList({
       setItems(sorted);
     } catch (e) { setErr(e.message); }
     finally { setBusy(false); }
-  }, [q, effectiveRole, verified, restricted]);
+  }, [q, effectiveRole, verified, restricted, verificationStatus]);
 
   useEffect(() => { load(); }, [load]);
 

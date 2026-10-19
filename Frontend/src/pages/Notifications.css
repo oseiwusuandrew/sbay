@@ -1,4 +1,3 @@
-.group-label { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 8px; text-transform: uppercase; letter-spacing: .08em; }
 .notif-list { display: flex; flex-direction: column; gap: 8px; }
 .notif-row {
   display: grid;

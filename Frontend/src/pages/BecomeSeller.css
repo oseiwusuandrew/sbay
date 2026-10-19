@@ -52,24 +52,6 @@
 }
 .file-drop:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-50); }
 
-.terms-box {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  padding: 16px;
-  display: flex; flex-direction: column; gap: 10px;
-}
-.terms-box h4 { font-size: 0.95rem; font-weight: 800; }
-.terms-scroll {
-  max-height: 220px;
-  overflow-y: auto;
-  padding-right: 6px;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  display: flex; flex-direction: column; gap: 8px;
-}
-.terms-scroll strong { color: var(--text); }
-
 .agree-row {
   display: flex; gap: 10px; align-items: flex-start;
   padding: 10px;

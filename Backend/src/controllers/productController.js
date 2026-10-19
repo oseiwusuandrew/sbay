@@ -3,6 +3,7 @@ import { User } from '../models/User.js';
 import { Settings } from '../models/Settings.js';
 import { HttpError } from '../utils/httpError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { escapeRegex } from '../utils/regex.js';
 
 // In-memory cache for catalog meta (schools + categories). Avoids full-scan on every request.
 let catalogCache = { data: null, at: 0 };
@@ -33,10 +34,6 @@ function normalizeText(value) {
     .trim()
     .replace(/\s+/g, ' ')
     .toLowerCase();
-}
-
-function escapeRegex(value) {
-  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function exactTextFilter(value) {
@@ -248,7 +245,7 @@ export const listProducts = asyncHandler(async (req, res) => {
   if (location) filter.location = exactTextFilter(location);
   if (school) {
     // Match products where school field matches OR seller's university matches
-    const schoolRegex = new RegExp(`^${school.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+    const schoolRegex = new RegExp(`^${escapeRegex(school)}$`, 'i');
     const sellersWithUni = await User.find({ 'verification.university': schoolRegex }).select('_id').lean();
     const sellerIds = sellersWithUni.map((s) => s._id);
     filter.$or = [

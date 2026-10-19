@@ -2,17 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { notificationApi } from '../api/client';
 import { useAuth } from '../store/AuthContext';
 import { useSocket } from './useSocket';
+import { readSeen as readSeenKey, writeSeen as writeSeenKey } from '../utils/seenStore';
 
 const SEEN_KEY = 'sbay.user.seenNotes';
-
-function readSeen(userId) {
-  try { return new Set(JSON.parse(localStorage.getItem(`${SEEN_KEY}.${userId}`) || '[]')); }
-  catch { return new Set(); }
-}
-
-function writeSeen(userId, set) {
-  localStorage.setItem(`${SEEN_KEY}.${userId}`, JSON.stringify(Array.from(set).slice(-300)));
-}
+const readSeen = (userId) => readSeenKey(`${SEEN_KEY}.${userId}`);
+const writeSeen = (userId, set) => writeSeenKey(`${SEEN_KEY}.${userId}`, set, 300);
 
 export function useUserNotifications() {
   const { user } = useAuth();
@@ -55,7 +49,8 @@ export function useUserNotifications() {
       type: 'order',
       title: 'Order update',
       body: payload?.status ? `Order is now ${payload.status}.` : 'You have new order activity.',
-      href: user.role === 'seller' ? '/seller-dashboard?tab=sales' : '/profile?tab=orders',
+      // Prefer the link the server sent; the old ?tab= links were ignored.
+      href: payload?.href || (user.role === 'seller' ? '/seller-dashboard/sales' : '/profile/orders'),
     });
     const onMessage = (payload) => inject({
       type: 'message',

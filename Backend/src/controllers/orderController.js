@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { Order } from '../models/Order.js';
-import { Product } from '../models/Product.js';
 import { Chat } from '../models/Chat.js';
+import { reserveStock, restoreStock } from '../utils/stock.js';
 import { User } from '../models/User.js';
 import { HttpError } from '../utils/httpError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -11,36 +11,6 @@ import { quoteCart } from '../utils/pricing.js';
 import { notifyNewOrders, ghs } from '../utils/orderNotify.js';
 import { env, isProd } from '../config/env.js';
 
-/**
- * Atomically reserve `qty` units of a product. Returns the updated
- * product or null if there isn't enough stock. This is the answer to
- * the "two users buy the last unit at the same time" race — Mongo's
- * findOneAndUpdate is atomic, so exactly one of the two updates
- * matches the `stock >= qty` predicate; the other gets null and is
- * told the item is out of stock.
- */
-async function reserveStock(productId, qty, session) {
-  return Product.findOneAndUpdate(
-    { _id: productId, status: 'active', stock: { $gte: qty } },
-    { $inc: { stock: -qty, sold: qty } },
-    { new: true, session }
-  );
-}
-
-/** Put units back on the shelf; a sold-out listing becomes buyable again. */
-export async function restoreStock(productId, qty, session) {
-  const p = await Product.findOneAndUpdate(
-    { _id: productId },
-    { $inc: { stock: qty, sold: -qty } },
-    { new: true, session }
-  );
-  if (!p) return p;
-  let dirty = false;
-  if (p.status === 'sold_out' && p.stock > 0) { p.status = 'active'; dirty = true; }
-  if (p.sold < 0) { p.sold = 0; dirty = true; }
-  if (dirty) await p.save({ session });
-  return p;
-}
 
 // Sellers move an order forward through these steps, never backwards.
 const SELLER_FLOW = ['pending', 'processing', 'shipped', 'delivered'];
@@ -76,10 +46,6 @@ export const checkout = asyncHandler(async (req, res) => {
         for (const { product, qty } of group.lines) {
           const updated = await reserveStock(product._id, qty, session);
           if (!updated) throw new HttpError(409, `Sorry — "${product.title}" just sold out.`);
-          if (updated.stock === 0) {
-            updated.status = 'sold_out';
-            await updated.save({ session });
-          }
         }
 
         const [order] = await Order.create([{

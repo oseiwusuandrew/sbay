@@ -15,6 +15,7 @@ export default function AdminUsers() {
       title="All users"
       description="Everyone with an sBay account, sorted by most recent registration."
       initialQuery={params.get('q') || ''}
+      initialRestricted={params.get('restricted') || ''}
       allowDelete
     />
   );

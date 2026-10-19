@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import { nanoid } from 'nanoid';
 import { PaymentSession } from '../models/PaymentSession.js';
 import { Order } from '../models/Order.js';
-import { Product } from '../models/Product.js';
+import { reserveStock } from '../utils/stock.js';
 import { Settings } from '../models/Settings.js';
 import { Chat } from '../models/Chat.js';
 import { AuditLog } from '../models/AuditLog.js';
@@ -79,16 +79,8 @@ async function fulfillPaymentSession(paymentSession, paystackData) {
 
       for (const group of quote.groups) {
         for (const { product, qty } of group.lines) {
-          const updated = await Product.findOneAndUpdate(
-            { _id: product._id, status: 'active', stock: { $gte: qty } },
-            { $inc: { stock: -qty, sold: qty } },
-            { new: true, session: mongoSession },
-          );
+          const updated = await reserveStock(product._id, qty, mongoSession);
           if (!updated) throw new HttpError(409, `"${product.title}" sold out before your payment completed.`);
-          if (updated.stock === 0) {
-            updated.status = 'sold_out';
-            await updated.save({ session: mongoSession });
-          }
         }
 
         const [order] = await Order.create([{

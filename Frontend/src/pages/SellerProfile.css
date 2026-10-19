@@ -122,5 +122,4 @@
   .sp-hero-inner { grid-template-columns: 1fr; justify-items: center; text-align: center; padding-top: 64px; }
   .sp-id { align-items: center; }
   .sp-name, .sp-meta, .sp-badges { justify-content: center; }
-  .sp-share .btn-label { display: none; }
 }

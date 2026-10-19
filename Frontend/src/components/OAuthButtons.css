@@ -53,13 +53,4 @@
 .oauth-google:hover { background: #f8faff; }
 .oauth-google:focus-visible { box-shadow: var(--focus); }
 
-.oauth-apple {
-  background: #000;
-  color: #fff;
-  border: 1px solid #000;
-}
-.oauth-apple:hover {
-  background: #1a1a1a;
-}
-
 /* Password strength styles live in pages/Auth.css */

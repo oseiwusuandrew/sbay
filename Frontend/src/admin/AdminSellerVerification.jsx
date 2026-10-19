@@ -12,9 +12,9 @@ export default function AdminSellerVerification() {
     <AdminUserList
       fixedRole="seller"
       title="Seller verification"
-      description="Sellers awaiting verification review. Approve to grant the verified badge across the marketplace; reject with a reason that's emailed to the applicant."
+      description="Sellers waiting for review. Approve to give them the verified badge across the marketplace, or reject with a reason they'll see in their seller settings."
       showRoleFilter={false}
-      rowLinkSeller
+      verificationStatus="pending"
       initialQuery={params.get('q') || ''}
     />
   );

@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
-  ArrowRight, BadgeCheck, Smartphone, Search as SearchIcon,
-  MapPin, Package, Star, Wallet, MessageCircle, PackageCheck, Plus, ChevronDown,
+  ArrowRight, BadgeCheck, Package, Star, Wallet, MessageCircle, PackageCheck, Plus,
   Navigation, Loader2, GraduationCap,
 } from 'lucide-react';
 import TopBar from '../components/TopBar';
+import HomeHero from '../components/HomeHero';
 import BottomNav from '../components/BottomNav';
 import Footer from '../components/Footer';
 import CampusPicker from '../components/CampusPicker';
@@ -135,72 +135,16 @@ export default function Home() {
     <div className="home page">
       <TopBar hideActions={false} searchPlaceholder="Search phones, books, sneakers…" />
 
-      {/* ── Location-aware header ── */}
-      <section className={`hero ${campus ? 'hero--local' : ''}`}>
-        <div className="hero-inner">
-          <div className="hero-copy">
-            <button className="loc-pill" onClick={() => setPickerOpen(true)} aria-haspopup="dialog">
-              <MapPin size={15} aria-hidden />
-              <span>{campus ? campus.label : 'All campuses'}</span>
-              {campus?.city && <em>{campus.city}</em>}
-              <ChevronDown size={15} aria-hidden />
-            </button>
-
-            {campus ? (
-              <>
-                <h1>{firstName ? `${firstName}, here's` : "Here's"} what's on sale at <span>{campus.label}</span></h1>
-                <p className="hero-sub">Listings from students on your campus, so you can meet up and collect the same day. Every payment is held in escrow until you've got your item.</p>
-              </>
-            ) : (
-              <>
-                <h1>Buy and sell on campus, <span>without the risk.</span></h1>
-                <p className="hero-sub">Your money is held safely until you confirm the item has reached you. Choose your campus to see listings you can pick up nearby.</p>
-              </>
-            )}
-
-            <form className="hero-search" onSubmit={submitSearch} role="search">
-              <SearchIcon size={20} aria-hidden />
-              <input
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={campus ? `Search listings at ${campus.label}` : 'What are you looking for?'}
-                aria-label="Search sBay"
-              />
-              <button type="submit" className="btn btn-primary">Search</button>
-            </form>
-
-            {categories.length > 0 && (
-              <div className="hero-cats" aria-label="Categories">
-                {categories.map((c) => (
-                  <Link
-                    key={c.id}
-                    className="chip"
-                    to={`/search?category=${encodeURIComponent(c.label)}${campus && campus.id !== 'others' ? `&school=${encodeURIComponent(campus.label)}` : ''}`}
-                  >
-                    {c.label}{c.count ? <span className="chip-count">{c.count}</span> : null}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <ul className="hero-trust" aria-label="Why sBay">
-            <li>
-              <span className="ht-ic"><Wallet size={18} /></span>
-              <div><strong>Escrow protection</strong><small>Sellers are paid only after you confirm delivery</small></div>
-            </li>
-            <li>
-              <span className="ht-ic"><BadgeCheck size={18} /></span>
-              <div><strong>Verified students</strong><small>Student IDs checked by the sBay team</small></div>
-            </li>
-            <li>
-              <span className="ht-ic"><Smartphone size={18} /></span>
-              <div><strong>Pay your way</strong><small>MoMo or card, secured by Paystack</small></div>
-            </li>
-          </ul>
-        </div>
-      </section>
+      <HomeHero
+        campus={campus}
+        firstName={firstName}
+        categories={categories}
+        picks={campus && local.recent.length ? [...local.popular, ...local.recent] : feed.trending}
+        query={query}
+        setQuery={setQuery}
+        onSearch={submitSearch}
+        onPickCampus={() => setPickerOpen(true)}
+      />
 
       <main className="home-main">
         {failed && (

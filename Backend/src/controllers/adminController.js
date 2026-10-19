@@ -1,5 +1,3 @@
-function escapeRegex(str) { return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
-
 import { User } from '../models/User.js';
 import { Product } from '../models/Product.js';
 import { Order } from '../models/Order.js';
@@ -12,7 +10,8 @@ import { signAccessToken } from '../utils/jwt.js';
 import { HttpError } from '../utils/httpError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { audit } from '../utils/audit.js';
-import { restoreStock } from './orderController.js';
+import { restoreStock } from '../utils/stock.js';
+import { escapeRegex } from '../utils/regex.js';
 import { invalidateCatalogCache } from './productController.js';
 
 /* ----------------------- Admin Auth ----------------------- */
@@ -94,9 +93,12 @@ export const dashboard = asyncHandler(async (_req, res) => {
 /* ----------------------- Users ------------------------ */
 
 export const listUsers = asyncHandler(async (req, res) => {
-  const { q, role, restricted, verified, page = 1, limit = 30, sort = 'recent' } = req.query;
+  const { q, role, restricted, verified, verification, page = 1, limit = 30, sort = 'recent' } = req.query;
   const filter = {};
   if (role) filter.role = role;
+  if (['unverified', 'pending', 'verified', 'rejected'].includes(verification)) {
+    filter['verification.status'] = verification;
+  }
   if (restricted === 'true') filter.restricted = true;
   if (restricted === 'false') filter.restricted = false;
   if (verified === 'true') filter.verified = true;

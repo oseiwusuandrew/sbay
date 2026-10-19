@@ -248,27 +248,6 @@
 /* ================================================================
    Shared sub-pages (ProfileOrders, ProfileWishlist, ProfileSettings)
    ================================================================ */
-.stats-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-}
-
-.stat-card {
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  align-items: center;
-  box-shadow: var(--shadow-sm);
-}
-.stat-card strong { font-size: 1.05rem; color: var(--primary); font-weight: 800; }
-.stat-card span { font-size: 0.78rem; color: var(--text-muted); }
-
-.orders-list { display: flex; flex-direction: column; gap: 10px; }
 
 .order-card {
   background: #fff;
@@ -317,33 +296,11 @@
 .order-side .btn.small { padding: 6px 12px; font-size: 0.78rem; }
 
 /* Status chip colours live in index.css (.status.*) */
-.status.in_escrow { background: #FEF5E2; color: #9A6200; }
 .status.placed { background: var(--surface-3); color: var(--text-muted); }
 
 /* Wishlist */
-.wishlist-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-}
 
 /* Become seller CTA */
-.become-seller-cta {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  text-align: left;
-  background: linear-gradient(135deg, var(--secondary), #e89306);
-  color: #2A1F00;
-  border: none;
-  cursor: pointer;
-  transition: transform .15s ease, box-shadow .15s ease;
-  box-shadow: 0 8px 18px rgba(245, 166, 35, 0.3);
-}
-.become-seller-cta:hover { transform: translateY(-2px); box-shadow: 0 12px 24px rgba(245, 166, 35, 0.42); }
-.become-seller-cta strong { color: #2A1F00; font-weight: 800; }
-.become-seller-cta .small { color: rgba(42, 31, 0, 0.78); }
 
 /* Settings form */
 .settings-form {
@@ -437,8 +394,6 @@
   .profile-name { font-size: 1.15rem; }
   .order-card { grid-template-columns: 70px 1fr; }
   .order-side { grid-column: span 2; flex-direction: row; flex-wrap: wrap; align-items: center; }
-  .wishlist-grid { grid-template-columns: 1fr 1fr; }
-  .stats-row { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (min-width: 961px) {
@@ -480,9 +435,7 @@
 
   .order-card { padding: 16px; }
   .order-card .thumb { width: 90px; height: 90px; }
-  .wishlist-grid { grid-template-columns: repeat(4, 1fr); gap: 16px; }
   .settings-form .card { padding: 24px; }
-  .stat-card strong { font-size: 1.1rem; }
 }
 
 @media (min-width: 1200px) {

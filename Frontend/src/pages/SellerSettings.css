@@ -83,42 +83,6 @@
   display: flex; align-items: center; gap: 10px;
 }
 
-/* Toggle rows */
-.toggle-row {
-  display: flex; align-items: center; gap: 12px;
-  padding: 10px 0;
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  text-align: left;
-  border-top: 1px solid var(--border);
-}
-.toggle-row:first-of-type { border-top: 0; }
-.toggle-row .toggle-text { flex: 1; min-width: 0; }
-.toggle-row strong {
-  display: inline-flex; align-items: center; gap: 6px;
-  font-weight: 700; font-size: .92rem;
-}
-.switch {
-  position: relative;
-  width: 44px; height: 24px;
-  border-radius: 999px;
-  background: var(--border);
-  flex-shrink: 0;
-  transition: background .2s ease;
-}
-.switch .dot {
-  position: absolute;
-  top: 2px; left: 2px;
-  width: 20px; height: 20px;
-  background: #fff;
-  border-radius: 50%;
-  transition: transform .2s ease;
-  box-shadow: var(--shadow-sm);
-}
-.switch.on { background: var(--primary); }
-.switch.on .dot { transform: translateX(20px); }
-
 .danger-zone { display: flex; flex-direction: column; gap: 12px; }
 .danger-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .settings-page > * { max-width: 760px; width: 100%; }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { adminApi } from '../api/client';
 import { useSocket } from '../hooks/useSocket';
+import { readSeen as readSeenKey, writeSeen as writeSeenKey } from '../utils/seenStore';
 
 /**
  * Notifications layer for the admin shell.
@@ -11,16 +12,8 @@ import { useSocket } from '../hooks/useSocket';
  */
 
 const SEEN_KEY = 'sbay.admin.seenNotes';
-
-function readSeen() {
-  try { return new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]')); }
-  catch { return new Set(); }
-}
-function writeSeen(set) {
-  // Cap to 500 most-recent ids so the storage doesn't grow unbounded.
-  const trimmed = Array.from(set).slice(-500);
-  localStorage.setItem(SEEN_KEY, JSON.stringify(trimmed));
-}
+const readSeen = () => readSeenKey(SEEN_KEY);
+const writeSeen = (set) => writeSeenKey(SEEN_KEY, set, 500);
 
 export function useNotifications() {
   const [items, setItems] = useState([]);
