@@ -1,0 +1,47 @@
+# Render Blueprint for the sBay API.
+# Create it once from the Render dashboard (New -> Blueprint, pick this repo);
+# after that every push to main redeploys automatically.
+# Values marked `sync: false` are secrets: Render asks for them on first
+# create and they never live in the repo.
+services:
+  - type: web
+    name: sbay-api
+    runtime: node
+    region: frankfurt          # closest Render region to Ghana
+    plan: free                 # free sleeps after ~15 min idle; use starter for launch
+    rootDir: Backend
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    domains:
+      - api.sbaygh.com
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "20"
+      - key: CORS_ORIGINS
+        value: https://sbaygh.com,https://www.sbaygh.com
+      - key: FRONTEND_URL
+        value: https://sbaygh.com
+      - key: PAYSTACK_CALLBACK_URL
+        value: https://sbaygh.com/payment-success
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MONGO_URI
+        sync: false
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      - key: SEED_ADMIN_EMAIL
+        sync: false
+      - key: SEED_ADMIN_PASSWORD
+        sync: false
