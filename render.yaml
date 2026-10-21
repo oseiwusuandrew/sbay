@@ -14,8 +14,8 @@ services:
     startCommand: npm start
     healthCheckPath: /health
     autoDeploy: true
-    domains:
-      - api.sbaygh.com
+    # Custom domain (api.sbaygh.com) is attached in the dashboard once it is
+    # free on Render; until then the API runs on its .onrender.com address.
     envVars:
       - key: NODE_ENV
         value: production
