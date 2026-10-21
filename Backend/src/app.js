@@ -10,6 +10,7 @@ import hpp from 'hpp';
 import { env, isProd } from './config/env.js';
 import { generalLimiter } from './middleware/rateLimit.js';
 import { notFound, errorHandler } from './middleware/error.js';
+import { HttpError } from './utils/httpError.js';
 
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
@@ -52,7 +53,7 @@ export function buildApp() {
       if (!isProd && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
         return cb(null, true);
       }
-      return cb(new Error(`CORS: origin ${origin} not allowed`));
+      return cb(new HttpError(403, `CORS: origin ${origin} not allowed`));
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
