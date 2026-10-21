@@ -14,19 +14,18 @@ services:
     startCommand: npm start
     healthCheckPath: /health
     autoDeploy: true
-    # Custom domain (api.sbaygh.com) is attached in the dashboard once it is
-    # free on Render; until then the API runs on its .onrender.com address.
+    # A custom domain, when there is one, is attached in the dashboard.
     envVars:
       - key: NODE_ENV
         value: production
       - key: NODE_VERSION
         value: "20"
       - key: CORS_ORIGINS
-        value: https://sbaygh.com,https://www.sbaygh.com
+        value: https://sbay-drab.vercel.app
       - key: FRONTEND_URL
-        value: https://sbaygh.com
+        value: https://sbay-drab.vercel.app
       - key: PAYSTACK_CALLBACK_URL
-        value: https://sbaygh.com/payment-success
+        value: https://sbay-drab.vercel.app/payment-success
       - key: JWT_SECRET
         generateValue: true
       - key: MONGO_URI

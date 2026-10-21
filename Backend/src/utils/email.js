@@ -166,7 +166,7 @@ export async function sendSupportReplyEmail({ toEmail, toName, adminReply, ticke
             <p>Our support team has replied to your message:</p>
             <div class="bubble">${escapeHtml(adminReply)}</div>
             <p style="margin-top:20px;color:#555;font-size:14px;">
-              If you have further questions, simply reply to this email or visit our support widget on <a href="https://sbaygh.com/home">sBay</a>.
+              If you have further questions, simply reply to this email or visit our support widget on <a href="${env.FRONTEND_URL}/home">sBay</a>.
             </p>
           </div>
           <div class="footer">© ${new Date().getFullYear()} sBay — Campus Marketplace</div>
@@ -264,7 +264,7 @@ export async function sendOrderStatusEmail(user, order, newStatus) {
               </div>
             </div>
             <p style="text-align: center;">
-              <a href="https://sbaygh.com/profile/orders" class="button">View Order Details</a>
+              <a href="${env.FRONTEND_URL}/profile/orders" class="button">View Order Details</a>
             </p>
             ${newStatus === 'delivered' ? '<p style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0;"><strong>⚠️ Action Required:</strong> Please confirm receipt of your order to release payment to the seller.</p>' : ''}
           </div>
@@ -363,7 +363,7 @@ export async function sendNewOrderEmail(seller, order) {
               </ol>
             </div>
             <p style="text-align: center;">
-              <a href="https://sbaygh.com/seller-dashboard/sales" class="button">View Order</a>
+              <a href="${env.FRONTEND_URL}/seller-dashboard/sales" class="button">View Order</a>
             </p>
           </div>
           <div class="footer">
@@ -449,7 +449,7 @@ export async function sendWelcomeEmail(user) {
               <li>Connect with buyers and sellers on campus</li>
             </ul>
             <p style="text-align: center;">
-              <a href="https://sbaygh.com/home" class="button">Start Shopping</a>
+              <a href="${env.FRONTEND_URL}/home" class="button">Start Shopping</a>
             </p>
           </div>
           <div class="footer">

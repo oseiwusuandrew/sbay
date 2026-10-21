@@ -8,4 +8,4 @@ Disallow: /notifications
 Disallow: /sell
 Disallow: /seller-dashboard
 
-Sitemap: https://sbaygh.com/sitemap.xml
+Sitemap: https://sbay-drab.vercel.app/sitemap.xml
