@@ -1,349 +1,207 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  ArrowLeft, ArrowRight, Check, GraduationCap, Briefcase, Upload, Shield, Clock,
-} from 'lucide-react';
-import Logo from '../components/Logo';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Camera, GraduationCap, Briefcase, Loader2, Store } from 'lucide-react';
+import AuthLayout from '../components/AuthLayout';
+import { Notice, useToast } from '../components/Feedback';
 import { useAuth } from '../store/AuthContext';
-import { Notice } from '../components/Feedback';
 import { resizeImage } from '../utils/image';
-import './Auth.css';
 import './BecomeSeller.css';
 
-const STEPS = ['Details', 'About You', 'Verification', 'Payout', 'Terms'];
+const NETWORKS = [
+  ['mtn-momo', 'MTN MoMo'],
+  ['vodafone-cash', 'Telecel Cash'],
+  ['airteltigo-money', 'AirtelTigo Money'],
+  ['bank', 'Bank account'],
+];
 
+function problems(form, idCard) {
+  const e = {};
+  if (form.storeName.trim().length < 2) e.storeName = 'Give your shop a name.';
+  if (form.isStudent) {
+    if (!form.university.trim()) e.university = 'Enter your university.';
+    if (!idCard) e.idCard = 'Add a photo of your student ID.';
+  } else if (!form.occupation.trim()) {
+    e.occupation = 'Tell us what you do.';
+  }
+  const digits = form.payoutAccount.replace(/\D/g, '');
+  if (form.payoutMethod === 'bank' ? !/^\d{9,16}$/.test(digits) : !/^0[2-5]\d{8}$/.test(digits)) {
+    e.payoutAccount = form.payoutMethod === 'bank' ? 'Enter the account number (9 to 16 digits).' : 'Enter the 10-digit MoMo number, e.g. 024 123 4567.';
+  }
+  if (form.payoutName.trim().length < 2) e.payoutName = 'Enter the name on the account.';
+  if (!form.agreed) e.agreed = 'Please agree to continue.';
+  return e;
+}
+
+/**
+ * Open a shop: name, verification details and where to get paid, on one
+ * page. The shop is usable straight away; the sBay team reviews the
+ * verification and adds the badge.
+ */
 export default function BecomeSeller() {
   const navigate = useNavigate();
+  const toast = useToast();
   const { user, upgradeToSeller } = useAuth();
-  const [step, setStep] = useState(0);
-  const [submitted, setSubmitted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
   const [form, setForm] = useState({
-    storeName: '',
-    bio: '',
-    isStudent: null, // true | false
-    university: '',
-    studentId: null, // file
-    occupation: '',
-    businessReg: '',
-    payoutMethod: 'mtn-momo',
-    payoutAccount: '',
-    payoutName: user?.name || '',
-    agreedTerms: false,
-    agreedPrivacy: false,
+    storeName: '', bio: '',
+    isStudent: true, university: '', occupation: '', businessReg: '',
+    payoutMethod: 'mtn-momo', payoutAccount: user?.phone || '', payoutName: user?.name || '',
+    agreed: false,
   });
+  const [idCard, setIdCard] = useState('');
+  const [touched, setTouched] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  if (user?.role === 'seller') return <Navigate to="/seller-dashboard" replace />;
 
-  const canNext = () => {
-    if (step === 0) return form.storeName.trim().length >= 2;
-    if (step === 1) return form.isStudent !== null;
-    if (step === 2) {
-      return form.isStudent
-        ? !!form.studentId && !!form.university
-        : !!form.occupation;
-    }
-    if (step === 3) return form.payoutAccount.replace(/\D/g, '').length >= 9 && form.payoutName.trim().length >= 2;
-    if (step === 4) return form.agreedTerms && form.agreedPrivacy;
-    return true;
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }));
+  const errors = problems(form, idCard);
+  const show = (k) => touched && errors[k];
+
+  const pickIdCard = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try { setIdCard(await resizeImage(file, 1600, 0.85)); }
+    catch (ex) { setError(ex.message); }
   };
 
-  const next = () => setStep((s) => Math.min(STEPS.length - 1, s + 1));
-  const prev = () => setStep((s) => Math.max(0, s - 1));
-
-  const finish = async () => {
+  const submit = async (e) => {
+    e.preventDefault();
+    setTouched(true);
     setError('');
-    setSubmitting(true);
+    if (Object.keys(errors).length) return;
+    setBusy(true);
     try {
-      // The ID card stays private to admins, so it is sent inline rather than
-      // uploaded as a public image. Downscaling keeps any phone photo well
-      // under the request limit while the text stays readable.
-      let idCardUrl;
-      if (form.isStudent && form.studentId) {
-        idCardUrl = await resizeImage(form.studentId, 1600, 0.85);
-      }
-
       await upgradeToSeller({
         storeName: form.storeName.trim(),
         bio: form.bio.trim() || undefined,
-        isStudent: !!form.isStudent,
+        isStudent: form.isStudent,
         university: form.isStudent ? form.university.trim() : undefined,
         occupation: form.isStudent ? undefined : form.occupation.trim(),
-        businessReg: form.isStudent ? undefined : (form.businessReg.trim() || undefined),
-        location: user?.location || form.university || undefined,
+        businessReg: form.isStudent ? undefined : form.businessReg.trim() || undefined,
+        location: form.isStudent ? form.university.trim() : user?.location || undefined,
         payout: {
           method: form.payoutMethod,
-          account: form.payoutAccount,
-          accountName: form.payoutName,
+          account: form.payoutAccount.replace(/\D/g, ''),
+          accountName: form.payoutName.trim(),
         },
-        idCardUrl,
+        idCardUrl: form.isStudent ? idCard : undefined,
       });
-      setSubmitted(true);
-    } catch (e) {
-      setError(e.message || 'Could not submit your application. Please try again.');
+      toast.success('Your shop is open. We\'ll review your verification shortly.');
+      navigate('/seller-dashboard', { replace: true });
+    } catch (ex) {
+      setError(ex.message || 'Could not open your shop. Please try again.');
     } finally {
-      setSubmitting(false);
+      setBusy(false);
     }
   };
 
-  if (submitted) {
-    return (
-      <div className="auth-page kente-bg bs-page">
-        <div className="auth-logo"><Logo size="md" /></div>
-        <div className="bs-card bs-submitted">
-          <div className="bs-submitted-ic"><Clock size={36} /></div>
-          <h2>Application submitted</h2>
-          <p className="muted">
-            Thanks, {form.storeName || 'seller'}! Our admins will review your details and verify
-            your account, usually within 24 hours. You can start setting up your store right away —
-            you'll see a "Verified" badge on your profile once approved.
-          </p>
-          <div className="bs-actions" style={{ marginTop: 18 }}>
-            <button
-              className="btn btn-primary"
-              style={{ marginLeft: 'auto' }}
-              onClick={() => navigate('/seller-dashboard', { replace: true })}
-            >
-              Go to dashboard <ArrowRight size={16} />
+  return (
+    <AuthLayout
+      title="Open your shop"
+      subtitle="It takes a couple of minutes. You can start listing as soon as you're done."
+      aside={{ title: "Turn the things you don't need into cash.", text: 'List in a minute, meet buyers on your campus, and get paid to your MoMo once they confirm.' }}
+    >
+      <form className="bs-form" onSubmit={submit} noValidate>
+        <section className="bs-sec">
+          <h2><Store size={16} aria-hidden="true" /> Your shop</h2>
+          <label className="field">
+            <span>Shop name</span>
+            <input value={form.storeName} onChange={set('storeName')} maxLength={80} placeholder="e.g. Kofi's Gadgets" aria-invalid={!!show('storeName')} />
+            {show('storeName') && <span className="field-error">{errors.storeName}</span>}
+          </label>
+          <label className="field">
+            <span>What do you sell? <em className="muted">optional</em></span>
+            <input value={form.bio} onChange={set('bio')} maxLength={200} placeholder="e.g. Phones, chargers and laptop accessories" />
+          </label>
+        </section>
+
+        <section className="bs-sec">
+          <h2>Verification</h2>
+          <p className="muted small">Only the sBay team sees this. Verified shops get a badge buyers trust.</p>
+          <div className="seg" role="radiogroup" aria-label="Are you a student?">
+            <button type="button" role="radio" aria-checked={form.isStudent} className={form.isStudent ? 'active' : ''}
+              onClick={() => setForm((f) => ({ ...f, isStudent: true }))}>
+              <GraduationCap size={16} /> I'm a student
+            </button>
+            <button type="button" role="radio" aria-checked={!form.isStudent} className={!form.isStudent ? 'active' : ''}
+              onClick={() => setForm((f) => ({ ...f, isStudent: false }))}>
+              <Briefcase size={16} /> I'm not a student
             </button>
           </div>
-        </div>
-      </div>
-    );
-  }
 
-  return (
-    <div className="auth-page kente-bg bs-page">
-      <button className="auth-back" onClick={() => navigate(-1)}><ArrowLeft size={20} /></button>
-      <div className="auth-logo"><Logo size="md" /></div>
-
-      <div className="bs-card">
-        <header className="bs-head">
-          <h2>Become a seller</h2>
-          <p className="lede">A few quick steps to start selling on sBay.</p>
-        </header>
-
-        {/* Progress */}
-        <div className="bs-progress">
-          {STEPS.map((s, i) => (
-            <div key={s} className={`bs-step ${i <= step ? 'done' : ''} ${i === step ? 'current' : ''}`}>
-              <span className="bs-circle">{i < step ? <Check size={14} /> : i + 1}</span>
-              <span className="bs-lbl">{s}</span>
-            </div>
-          ))}
-        </div>
-
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={step}
-            className="bs-body"
-            initial={{ opacity: 0, x: 14 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -14 }}
-            transition={{ duration: 0.25 }}
-          >
-            {step === 0 && (
-              <>
-                <div className="field">
-                  <label>Store name</label>
-                  <div className="field-input">
-                    <input value={form.storeName} onChange={(e) => set('storeName', e.target.value)} placeholder="e.g. Kofi Gadgets" />
-                  </div>
-                </div>
-                <div className="field">
-                  <label>Short bio</label>
-                  <div className="field-input">
-                    <input value={form.bio} onChange={(e) => set('bio', e.target.value)} placeholder="What kind of items do you sell?" />
-                  </div>
-                </div>
-              </>
-            )}
-
-            {step === 1 && (
-              <>
-                <p className="muted small">Are you currently a student?</p>
-                <div className="role-grid" style={{ marginTop: 10 }}>
-                  <button type="button" className={`role-card ${form.isStudent === true ? 'active' : ''}`} onClick={() => set('isStudent', true)}>
-                    <GraduationCap size={28} color="#0A7E3E" />
-                    <strong>Yes, I'm a student</strong>
-                    <span>Verified with student ID</span>
-                  </button>
-                  <button type="button" className={`role-card ${form.isStudent === false ? 'active' : ''}`} onClick={() => set('isStudent', false)}>
-                    <Briefcase size={28} color="#F5A623" />
-                    <strong>No, I'm not</strong>
-                    <span>Independent seller</span>
-                  </button>
-                </div>
-              </>
-            )}
-
-            {step === 2 && form.isStudent && (
-              <>
-                <div className="field">
-                  <label>University</label>
-                  <div className="field-input">
-                    <input value={form.university} onChange={(e) => set('university', e.target.value)} placeholder="UG, Legon" />
-                  </div>
-                </div>
-                <div className="field">
-                  <label>Upload Student ID</label>
-                  <label className="file-drop">
-                    <Upload size={22} />
-                    <span>{form.studentId?.name || 'Tap to upload (JPG/PNG)'}</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => set('studentId', e.target.files?.[0] || null)}
-                      hidden
-                    />
-                  </label>
-                  <p className="muted small">Your ID is only used to verify you and is never shown to buyers.</p>
-                </div>
-              </>
-            )}
-
-            {step === 2 && form.isStudent === false && (
-              <>
-                <div className="field">
-                  <label>Occupation</label>
-                  <div className="field-input">
-                    <input value={form.occupation} onChange={(e) => set('occupation', e.target.value)} placeholder="e.g. Trader, Freelancer" />
-                  </div>
-                </div>
-                <div className="field">
-                  <label>Business registration (optional)</label>
-                  <div className="field-input">
-                    <input value={form.businessReg} onChange={(e) => set('businessReg', e.target.value)} placeholder="e.g. RGD certificate number" />
-                  </div>
-                </div>
-              </>
-            )}
-
-            {step === 3 && (
-              <>
-                <div className="field">
-                  <label>Payment network</label>
-                  <div className="field-input">
-                    <select value={form.payoutMethod} onChange={(e) => set('payoutMethod', e.target.value)}>
-                      <option value="mtn-momo">MTN MoMo</option>
-                      <option value="vodafone-cash">Telecel Cash</option>
-                      <option value="airteltigo-money">AirtelTigo Money</option>
-                      <option value="bank">Bank account</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="field">
-                  <label>Payment number</label>
-                  <div className="field-input">
-                    <input
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      value={form.payoutAccount}
-                      onChange={(e) => set('payoutAccount', e.target.value.replace(/\D/g, ''))}
-                      placeholder="024 123 4567"
-                    />
-                  </div>
-                  <p className="muted small">Enter a valid phone or account number for receiving buyer payments.</p>
-                </div>
-                <div className="field">
-                  <label>Account name</label>
-                  <div className="field-input">
-                    <input value={form.payoutName} onChange={(e) => set('payoutName', e.target.value)} placeholder="Name registered on the account" />
-                  </div>
-                </div>
-              </>
-            )}
-
-            {step === 4 && (
-              <>
-                <div className="terms-intro-block">
-                  <Shield size={22} color="#0A7E3E" />
-                  <div>
-                    <h4 style={{ margin: 0, marginBottom: 4 }}>Almost done</h4>
-                    <p className="muted small" style={{ margin: 0, lineHeight: 1.55 }}>
-                      Please read and accept both documents before continuing.
-                      Tap each link to read the full text in a new page.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="terms-agree-card">
-                  <div className="terms-agree-header">
-                    <Shield size={18} color="#0A7E3E" />
-                    <strong>sBay Seller Agreement</strong>
-                    <a
-                      href="/terms"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="terms-read-link"
-                    >
-                      Read full agreement →
-                    </a>
-                  </div>
-                  <p className="muted small" style={{ margin: '6px 0 12px' }}>
-                    Covers eligibility, listing rules, prohibited items, escrow fees, dispute resolution, and your responsibilities as a seller.
-                  </p>
-                  <label className="agree-row">
-                    <input type="checkbox" checked={form.agreedTerms} onChange={(e) => set('agreedTerms', e.target.checked)} />
-                    <span>I have read and agree to the <strong>sBay Seller Agreement</strong>.</span>
-                  </label>
-                </div>
-
-                <div className="terms-agree-card" style={{ marginTop: 12 }}>
-                  <div className="terms-agree-header">
-                    <Shield size={18} color="#1565C0" />
-                    <strong>sBay Privacy Policy</strong>
-                    <a
-                      href="/privacy"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="terms-read-link"
-                    >
-                      Read full policy →
-                    </a>
-                  </div>
-                  <p className="muted small" style={{ margin: '6px 0 12px' }}>
-                    Covers what data we collect, how we use it, who sees it, your rights, and how we keep it secure.
-                  </p>
-                  <label className="agree-row">
-                    <input type="checkbox" checked={form.agreedPrivacy} onChange={(e) => set('agreedPrivacy', e.target.checked)} />
-                    <span>I have read and agree to the <strong>sBay Privacy Policy</strong>.</span>
-                  </label>
-                </div>
-
-                {(!form.agreedTerms || !form.agreedPrivacy) && (
-                  <p className="muted small" style={{ marginTop: 10, textAlign: 'center' }}>
-                    You must accept both documents to continue.
-                  </p>
-                )}
-              </>
-            )}
-          </motion.div>
-        </AnimatePresence>
-
-        <div className="bs-actions">
-          {step > 0 && <button className="btn btn-ghost" onClick={prev}><ArrowLeft size={16} /> Back</button>}
-          {step < STEPS.length - 1 ? (
-            <button className="btn btn-primary" disabled={!canNext()} onClick={next} style={{ marginLeft: 'auto' }}>
-              Continue <ArrowRight size={16} />
-            </button>
+          {form.isStudent ? (
+            <>
+              <label className="field">
+                <span>University</span>
+                <input value={form.university} onChange={set('university')} maxLength={120} placeholder="e.g. University of Ghana" aria-invalid={!!show('university')} />
+                {show('university') && <span className="field-error">{errors.university}</span>}
+              </label>
+              <div className="field">
+                <span>Student ID card</span>
+                <label className={`bs-upload ${idCard ? 'has' : ''} ${show('idCard') ? 'has-error' : ''}`}>
+                  {idCard ? <img src={idCard} alt="Your student ID" /> : (
+                    <>
+                      <Camera size={22} aria-hidden="true" />
+                      <strong>Add a photo of your student ID</strong>
+                      <span className="muted small">Your name and photo should be readable</span>
+                    </>
+                  )}
+                  <input type="file" accept="image/*" onChange={pickIdCard} hidden />
+                </label>
+                {show('idCard') && <span className="field-error">{errors.idCard}</span>}
+              </div>
+            </>
           ) : (
-            <button
-              className="btn btn-primary"
-              disabled={!canNext() || submitting}
-              onClick={finish}
-              style={{ marginLeft: 'auto' }}
-            >
-              {submitting ? 'Submitting…' : <>Agree and continue <Check size={16} /></>}
-            </button>
+            <>
+              <label className="field">
+                <span>What do you do?</span>
+                <input value={form.occupation} onChange={set('occupation')} maxLength={120} placeholder="e.g. Phone accessories trader" aria-invalid={!!show('occupation')} />
+                {show('occupation') && <span className="field-error">{errors.occupation}</span>}
+              </label>
+              <label className="field">
+                <span>Business registration number <em className="muted">optional</em></span>
+                <input value={form.businessReg} onChange={set('businessReg')} maxLength={80} />
+              </label>
+            </>
           )}
-        </div>
-        {error && (
-          <Notice tone="error" style={{ marginTop: 10 }}>{error}</Notice>
-        )}
-      </div>
-    </div>
+        </section>
+
+        <section className="bs-sec">
+          <h2>Where to pay you</h2>
+          <label className="field">
+            <span>Payout method</span>
+            <select value={form.payoutMethod} onChange={set('payoutMethod')}>
+              {NETWORKS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+            </select>
+          </label>
+          <div className="bs-row">
+            <label className="field">
+              <span>{form.payoutMethod === 'bank' ? 'Account number' : 'MoMo number'}</span>
+              <input inputMode="numeric" value={form.payoutAccount} onChange={set('payoutAccount')} placeholder={form.payoutMethod === 'bank' ? 'Account number' : '024 123 4567'} aria-invalid={!!show('payoutAccount')} />
+              {show('payoutAccount') && <span className="field-error">{errors.payoutAccount}</span>}
+            </label>
+            <label className="field">
+              <span>Name on the account</span>
+              <input value={form.payoutName} onChange={set('payoutName')} maxLength={80} aria-invalid={!!show('payoutName')} />
+              {show('payoutName') && <span className="field-error">{errors.payoutName}</span>}
+            </label>
+          </div>
+        </section>
+
+        <label className={`bs-agree ${show('agreed') ? 'has-error' : ''}`}>
+          <input type="checkbox" checked={form.agreed} onChange={set('agreed')} />
+          <span>I agree to the <Link to="/terms" target="_blank">terms of use</Link> and have read the <Link to="/privacy" target="_blank">privacy notice</Link>.</span>
+        </label>
+
+        {touched && Object.keys(errors).length > 0 && <Notice tone="error">Some details are missing. Check the highlighted fields.</Notice>}
+        {error && <Notice tone="error">{error}</Notice>}
+
+        <button type="submit" className="btn btn-primary auth-submit" disabled={busy}>
+          {busy ? <><Loader2 size={18} className="spin" /> Opening your shop…</> : 'Open my shop'}
+        </button>
+      </form>
+    </AuthLayout>
   );
 }

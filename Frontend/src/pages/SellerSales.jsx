@@ -1,136 +1,154 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ghs } from '../utils/money';
-import { motion } from 'framer-motion';
-import { MessageCircle, Package, Truck } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { MessageCircle, Package, MapPin, Loader2 } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import BottomNav from '../components/BottomNav';
 import Footer from '../components/Footer';
-import { useOrders, ORDER_STATUSES } from '../store/OrdersContext';
+import { SkeletonList } from '../components/Skeleton';
+import { useToast } from '../components/Feedback';
+import { useOrders } from '../store/OrdersContext';
 import { useConfirm } from '../store/ConfirmContext';
 import { sbay } from '../api/client';
-import { Notice } from '../components/Feedback';
+import { ghs } from '../utils/money';
+import { shortTime } from '../api/adapters';
 import './pages.css';
 import './SellerDashboard.css';
 
-// Orders only move forward; the API rejects backwards steps.
-const FLOW = ['pending', 'processing', 'shipped', 'delivered'];
-const STATUS_LABEL = ORDER_STATUSES.reduce((m, s) => ({ ...m, [s.id]: s.label }), {});
+const TABS = [
+  ['todo', 'To handle', (o) => ['pending', 'processing', 'shipped'].includes(o.status)],
+  ['waiting', 'Waiting for buyer', (o) => o.status === 'delivered'],
+  ['done', 'Completed', (o) => o.status === 'completed'],
+  ['canceled', 'Canceled', (o) => o.status === 'canceled'],
+];
 
+// The single next step for each status, in the seller's words.
+const NEXT = {
+  pending: { to: 'processing', label: 'Accept order', done: 'Order accepted. Agree a hand-over with the buyer.' },
+  processing: { to: 'shipped', label: 'Ready for hand-over', done: 'Buyer told the item is on its way.' },
+  shipped: { to: 'delivered', label: 'Mark as delivered', done: "Marked delivered. You're paid when the buyer confirms." },
+};
+const STATUS_TEXT = {
+  pending: 'New order',
+  processing: 'Accepted',
+  shipped: 'On its way',
+  delivered: 'Delivered, waiting for buyer',
+  completed: 'Completed, payment released',
+  canceled: 'Canceled',
+};
+
+/** Orders other people placed with this seller, and the next step on each. */
 export default function SellerSales() {
   const navigate = useNavigate();
   const confirm = useConfirm();
-  const { salesOrders, setStatus, cancel } = useOrders();
-  const [err, setErr] = useState('');
+  const toast = useToast();
+  const { salesOrders, loading, setStatus, cancel } = useOrders();
+  const [tab, setTab] = useState('todo');
+  const [busy, setBusy] = useState('');
 
-  const act = async (fn) => {
-    setErr('');
-    try { await fn(); } catch (e) { setErr(e.message || 'Could not update the order.'); }
+  const counts = useMemo(() => Object.fromEntries(TABS.map(([id, , match]) => [id, salesOrders.filter(match).length])), [salesOrders]);
+  const visible = salesOrders.filter(TABS.find(([id]) => id === tab)[2]);
+
+  const run = async (key, fn, okText) => {
+    setBusy(key);
+    try {
+      await fn();
+      if (okText) toast.success(okText);
+    } catch (e) {
+      toast.error(e.message || 'Could not update the order.');
+    } finally {
+      setBusy('');
+    }
   };
 
-  const onDecline = async (o) => {
+  const advance = async (o) => {
+    const step = NEXT[o.status];
+    if (step.to === 'delivered') {
+      const ok = await confirm({
+        title: 'Mark as delivered?',
+        body: 'Only do this once the buyer has the item. They will be asked to confirm, which releases your payment.',
+        confirmLabel: 'Yes, delivered',
+      });
+      if (!ok) return;
+    }
+    run(`step-${o._id}`, () => setStatus(o._id, step.to), step.done);
+  };
+
+  const decline = async (o) => {
     const ok = await confirm({
       title: 'Decline this order?',
-      body: 'The order is canceled, the buyer is refunded from escrow and the item goes back on sale.',
+      body: 'The order is canceled, the buyer is refunded and the item goes back on sale.',
       confirmLabel: 'Decline order',
       danger: true,
     });
-    if (ok) act(() => cancel(o._id, 'Declined by seller'));
+    if (ok) run(`cancel-${o._id}`, () => cancel(o._id, 'Declined by seller'), 'Order declined. The buyer will be refunded.');
   };
 
-  const pending = salesOrders.filter(
-    (o) => !['delivered', 'completed', 'canceled'].includes(o.status)
-  ).length;
-
-  const messageBuyer = async (order) => {
-    const otherId = order.buyerId;
-    if (!otherId || otherId === 'me') return;
-    act(async () => {
-      const chat = await sbay.startChat(otherId);
-      navigate(`/chat/${chat._id}`);
-    });
-  };
-
-  const onMarkDelivered = async (id) => {
-    const ok = await confirm({
-      title: 'Mark as delivered?',
-      body: "Confirm you handed the item to the buyer. They'll be asked to confirm receipt to release the funds.",
-      confirmLabel: 'Yes, delivered',
-    });
-    if (ok) act(() => setStatus(id, 'delivered'));
-  };
+  const messageBuyer = (o) => run(`chat-${o._id}`, async () => {
+    const chat = await sbay.startChat(o.buyerId);
+    navigate(`/chat/${chat._id}`);
+  });
 
   return (
     <div className="page">
-      <TopBar showBack title="Incoming orders" showSearch={false} />
-      <main className="page-main">
-        <div className="sd-chats-help">
-          <Package size={16} />
-          <div>
-            <strong>Orders you've received</strong>
-            <p className="muted small">
-              Update order status as you process it. Mark "Delivered" once the buyer has the item.
-              {pending > 0 && <> · <span style={{ color: 'var(--secondary)', fontWeight: 700 }}>{pending} pending</span></>}
-            </p>
-          </div>
+      <TopBar showBack title="Orders from buyers" showSearch={false} />
+      <main className="page-main sd-sub">
+        <div className="sd-tabs" role="tablist" aria-label="Filter orders">
+          {TABS.map(([id, label]) => (
+            <button key={id} role="tab" aria-selected={tab === id} className={`chip ${tab === id ? 'active' : ''}`} onClick={() => setTab(id)}>
+              {label}{counts[id] > 0 && <span className="chip-count">{counts[id]}</span>}
+            </button>
+          ))}
         </div>
 
-        {err && <Notice tone="error">{err}</Notice>}
-
-        {salesOrders.length === 0 && (
+        {loading && salesOrders.length === 0 ? <SkeletonList count={3} /> : visible.length === 0 ? (
           <div className="empty">
-            <Package size={48} color="#C9D4BD" />
-            <h3>No incoming orders</h3>
-            <p>New buyer orders will appear here so you can fulfil them.</p>
+            <span className="empty-ic"><Package size={26} /></span>
+            <h3>{tab === 'todo' ? 'Nothing to handle right now' : 'Nothing here yet'}</h3>
+            {tab === 'todo' && <p>When someone buys from you, the order appears here with the next step to take.</p>}
           </div>
+        ) : (
+          <ul className="sd-items">
+            {visible.map((o) => {
+              const step = NEXT[o.status];
+              const where = o.deliveryLocation || o.buyerLocation;
+              return (
+                <li key={o._id} className="sd-item sd-order">
+                  <div className="sd-item-thumb"><img src={o.image} alt="" loading="lazy" /></div>
+                  <div className="sd-item-body">
+                    <span className="sd-item-title">{o.title}{o.qty > 1 ? ` × ${o.qty}` : ''}</span>
+                    <div className="sd-item-meta">
+                      <strong>{ghs(o.subtotal ?? o.price * o.qty)}</strong>
+                      <span className={`sd-status sd-status--${o.status}`}>{STATUS_TEXT[o.status]}</span>
+                    </div>
+                    <p className="sd-order-who">
+                      {o.buyerName} · {o.invoiceNumber} · {shortTime(o.placedAt)}
+                      {where && <><br /><MapPin size={13} aria-hidden="true" /> {where}</>}
+                    </p>
+                  </div>
+                  <div className="sd-item-actions">
+                    {o.status !== 'canceled' && (
+                      <button className="icon-action" onClick={() => messageBuyer(o)} disabled={busy === `chat-${o._id}`} aria-label={`Message ${o.buyerName}`}>
+                        <MessageCircle size={16} />
+                      </button>
+                    )}
+                    {['pending', 'processing'].includes(o.status) && (
+                      <button className="btn btn-ghost btn-sm" onClick={() => decline(o)} disabled={!!busy}>Decline</button>
+                    )}
+                    {step && (
+                      <button className="btn btn-primary btn-sm" onClick={() => advance(o)} disabled={!!busy}>
+                        {busy === `step-${o._id}` && <Loader2 size={14} className="spin" />} {step.label}
+                      </button>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         )}
 
-        {salesOrders.map((o) => (
-          <motion.article
-            key={o.id}
-            className="order-card"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <div className="thumb" style={{ backgroundImage: `url(${o.image})` }} />
-            <div className="order-meta">
-              <h4>{o.title}</h4>
-              <p className="muted small">
-                {o.invoiceNumber || `#${o.id}`} · {o.buyerName} · Escrow
-              </p>
-              <p className="muted small">📍 {o.buyerLocation || o.deliveryLocation || '—'}</p>
-              <span className="price">You earn {ghs(o.subtotal ?? o.price * o.qty)}</span>
-            </div>
-            <div className="order-side">
-              <span className={`status ${o.status}`}>{STATUS_LABEL[o.status]}</span>
-              {FLOW.includes(o.status) && o.status !== 'delivered' && (
-                <select
-                  className="status-select"
-                  value={o.status}
-                  aria-label="Update order status"
-                  onChange={(e) => act(() => setStatus(o._id, e.target.value))}
-                >
-                  {FLOW.slice(FLOW.indexOf(o.status)).map((s) => (
-                    <option key={s} value={s} disabled={s === o.status}>{STATUS_LABEL[s]}</option>
-                  ))}
-                </select>
-              )}
-              {o.status !== 'canceled' && (
-                <button className="btn btn-ghost small" onClick={() => messageBuyer(o)}>
-                  <MessageCircle size={14} /> Message buyer
-                </button>
-              )}
-              {!['delivered', 'completed', 'canceled'].includes(o.status) && (
-                <button className="btn btn-primary btn-sm" onClick={() => onMarkDelivered(o._id)}>
-                  <Truck size={14} /> Mark delivered
-                </button>
-              )}
-              {['pending', 'processing'].includes(o.status) && (
-                <button className="btn btn-danger btn-sm" onClick={() => onDecline(o)}>Decline</button>
-              )}
-            </div>
-          </motion.article>
-        ))}
+        <p className="muted small sd-foot">
+          Payments are held by sBay until the buyer confirms they have the item. <Link to="/help#selling">How selling works</Link>
+        </p>
       </main>
       <Footer />
       <BottomNav />

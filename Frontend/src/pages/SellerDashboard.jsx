@@ -1,241 +1,190 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import {
-  Plus, Package, TrendingUp, Wallet,
-  ShieldAlert, Crown, Settings as SettingsIc, LogOut, ChevronRight, Store, Clock,
-  ShoppingBag, MessageCircle, BarChart2,
+  Plus, Package, TrendingUp, Wallet, ShieldAlert, Crown, Settings as SettingsIc, LogOut,
+  ChevronRight, Store, Clock, ShoppingBag, MessageCircle, Eye,
 } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import BottomNav from '../components/BottomNav';
 import Avatar from '../components/Avatar';
 import Footer from '../components/Footer';
-import { productApi } from '../api/client';
+import { productApi, sbay } from '../api/client';
 import { useAuth } from '../store/AuthContext';
 import { useConfirm } from '../store/ConfirmContext';
 import { useOrders } from '../store/OrdersContext';
+import { ghs } from '../utils/money';
 import './pages.css';
 import './SellerDashboard.css';
 
-const PLAN_LABEL = { free: 'Free', plus: 'Plus', pro: 'Pro' };
+/** The plan in force today; a paid plan lapses to Free when its period ends. */
+const planCodeOf = (user) => {
+  const sub = user?.subscription;
+  if (!sub?.plan || sub.plan === 'free' || !sub.renewsAt || new Date(sub.renewsAt) < new Date()) return 'free';
+  return sub.plan;
+};
 
+function NavRow({ to, icon: Icon, label, desc, badge, tone }) {
+  return (
+    <Link to={to} className={`sd-nav-row ${tone || ''}`}>
+      <span className="sd-nav-ic"><Icon size={19} /></span>
+      <span className="sd-nav-body">
+        <strong>{label}</strong>
+        {desc && <span className="muted small">{desc}</span>}
+      </span>
+      {badge > 0 && <span className="sd-nav-badge">{badge}</span>}
+      <ChevronRight size={18} className="sd-nav-chev" aria-hidden="true" />
+    </Link>
+  );
+}
+
+/** Seller home: what needs doing, how the shop is doing, and links to everything else. */
 export default function SellerDashboard() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const confirm = useConfirm();
-  const [listings, setListings] = useState([]);
-  const [listingStats, setListingStats] = useState({ listings: 0, activeListings: 0, views: 0, sold: 0 });
   const { myOrders: purchases, salesOrders } = useOrders();
+  const [stats, setStats] = useState(null);
+  const [plans, setPlans] = useState([]);
 
   useEffect(() => {
-    let alive = true;
-    Promise.allSettled([productApi.mine(), productApi.myStats()])
-      .then(([listingsRes, statsRes]) => {
-        if (!alive) return;
-        const nextListings = listingsRes.status === 'fulfilled' ? listingsRes.value : [];
-        setListings(nextListings);
-        setListingStats(statsRes.status === 'fulfilled'
-          ? statsRes.value
-          : {
-            listings: nextListings.length,
-            activeListings: nextListings.filter((item) => item.status === 'active').length,
-            views: nextListings.reduce((sum, item) => sum + (Number(item.views) || 0), 0),
-            sold: nextListings.reduce((sum, item) => sum + (Number(item.sold) || 0), 0),
-          });
-      });
-    return () => { alive = false; };
+    productApi.myStats().then(setStats).catch(() => setStats({}));
+    sbay.getPlans().then(setPlans).catch(() => {});
   }, []);
 
+  const planCode = planCodeOf(user);
+  const plan = plans.find((p) => p.code === planCode);
+  const active = Number(stats?.activeListings) || 0;
+  const views = Number(stats?.views) || 0;
+  const earned = useMemo(() => salesOrders
+    .filter((o) => o.status === 'completed')
+    .reduce((sum, o) => sum + (Number(o.subtotal ?? (Number(o.total) - Number(o.fee))) || 0), 0), [salesOrders]);
+  const toHandle = salesOrders.filter((o) => ['pending', 'processing', 'shipped'].includes(o.status)).length;
+  const awaitingBuyer = salesOrders.filter((o) => o.status === 'delivered').length;
+  const openPurchases = purchases.filter((p) => !['completed', 'canceled'].includes(p.status)).length;
+  const verification = user?.verification?.status || (user?.verified ? 'verified' : 'unverified');
+  const storeName = user?.sellerProfile?.storeName || user?.name || 'Your shop';
+  const atLimit = plan?.maxListings && active >= plan.maxListings;
+
   const onLogout = async () => {
-    const ok = await confirm({
-      title: 'Sign out?',
-      body: 'You will need to sign in again to access your seller dashboard.',
-      confirmLabel: 'Sign out',
-      danger: true,
-    });
-    if (ok) { logout(); navigate('/'); }
+    const ok = await confirm({ title: 'Sign out?', body: 'You can sign back in at any time.', confirmLabel: 'Sign out' });
+    if (ok) { logout(); navigate('/home'); }
   };
 
-  const totalEarnings = salesOrders
-    .filter((o) => o.status === 'completed')
-    .reduce((sum, o) => sum + (Number(o.total) || 0) - (Number(o.fee) || 0), 0);
-  const activeListingCount = Number(listingStats.activeListings ?? listings.length) || 0;
-  const profileViews = Number(listingStats.views) || 0;
-  const pendingSales = salesOrders.filter(
-    (o) => !['delivered', 'completed', 'canceled'].includes(o.status)
-  ).length;
-  const pendingPurchases = purchases.filter((p) => p.status !== 'completed').length;
-  const verificationStatus = user?.verification?.status || (user?.verified ? 'verified' : 'unverified');
-  const planId = user?.subscription?.plan || 'free';
-  const storeName = user?.sellerProfile?.storeName || user?.name || 'Seller';
-
-  const MANAGE_ITEMS = [
-    {
-      path: '/seller-dashboard/listings',
-      icon: Package,
-      label: 'My listings',
-      desc: `${activeListingCount} active listing${activeListingCount !== 1 ? 's' : ''}`,
-      badge: 0,
+  const tasks = [
+    toHandle > 0 && {
+      to: '/seller-dashboard/sales', icon: TrendingUp, tone: 'is-warn',
+      label: `${toHandle} order${toHandle === 1 ? '' : 's'} to handle`,
+      desc: 'Confirm, arrange the hand-over, then mark as delivered',
     },
-    {
-      path: '/seller-dashboard/sales',
-      icon: TrendingUp,
-      label: 'Incoming orders',
-      desc: 'Manage & fulfil buyer orders',
-      badge: pendingSales,
+    awaitingBuyer > 0 && {
+      to: '/seller-dashboard/sales', icon: Clock,
+      label: `${awaitingBuyer} waiting for the buyer`,
+      desc: "You're paid once they confirm they have the item",
     },
-    {
-      path: '/profile/orders',
-      icon: ShoppingBag,
-      label: 'My purchases',
-      desc: 'Track items you bought',
-      badge: pendingPurchases,
+    verification === 'rejected' && {
+      to: '/seller/verification', icon: ShieldAlert, tone: 'is-bad',
+      label: 'Verification not approved', desc: user?.verification?.reason || 'Send your details again',
     },
-    {
-      path: '/chats',
-      icon: MessageCircle,
-      label: 'Messages',
-      desc: 'Chats with buyers and sellers',
-      badge: 0,
+    verification === 'unverified' && {
+      to: '/seller/verification', icon: ShieldAlert,
+      label: 'Get verified', desc: 'Verified shops get a badge buyers trust',
     },
-  ];
-
-  const ACCOUNT_ITEMS = [
-    {
-      path: '/seller/subscription',
-      icon: Crown,
-      label: 'Subscription',
-      desc: `Current plan: ${PLAN_LABEL[planId]}${user?.subscription?.status === 'canceled' ? ' · canceling' : ''}`,
+    verification === 'pending' && {
+      to: '/seller/verification', icon: Clock,
+      label: 'Verification under review', desc: "We'll let you know when it's done",
     },
-    {
-      path: `/seller/${user?.id || 's1'}`,
-      icon: Store,
-      label: 'View public store',
-      desc: 'See what buyers see',
+    atLimit && {
+      to: '/seller/subscription', icon: Crown, tone: 'is-warn',
+      label: `You've used all ${plan.maxListings} listings on ${plan.name}`, desc: 'Upgrade, or mark something as sold to list more',
     },
-    {
-      path: '/seller/settings',
-      icon: SettingsIc,
-      label: 'Settings',
-      desc: 'Store, payouts, password & more',
-    },
-  ];
+  ].filter(Boolean);
 
   return (
     <div className="page">
       <TopBar showSearch={false} title="Seller dashboard" />
 
-      <main className="page-main sd-page-main">
-        {/* Hero */}
+      <main className="page-main sd-main">
         <section className="sd-hero">
           <div className="sd-hero-left">
             <Avatar src={user?.avatar} name={storeName} size={52} />
             <div>
-              <p className="sd-hero-welcome">Welcome back,</p>
-              <h2 className="sd-hero-name">{storeName}</h2>
+              <h1 className="sd-hero-name">{storeName}</h1>
+              <Link to={`/seller/${user?.id}`} className="sd-hero-link">View your shop</Link>
             </div>
           </div>
-          <button className="btn btn-primary sd-new-listing-btn" onClick={() => navigate('/sell')}>
+          <button className="btn btn-primary" onClick={() => navigate('/sell')} disabled={atLimit}>
             <Plus size={16} /> New listing
           </button>
         </section>
 
-        {/* Stats */}
-        <section className="sd-stats">
-          {[
-            { icon: Package,   label: 'Listings',      value: activeListingCount },
-            { icon: BarChart2, label: 'Listing views',  value: profileViews.toLocaleString() },
-            { icon: Wallet,    label: 'Earnings',       value: `GH₵ ${totalEarnings.toLocaleString()}` },
-          ].map(({ icon: Icon, label, value }) => (
-            <div key={label} className="stat">
-              <span className="ic"><Icon size={18} /></span>
-              <strong>{value}</strong>
-              <span>{label}</span>
-            </div>
-          ))}
-        </section>
-
-        {/* Verification banner */}
-        {verificationStatus !== 'verified' && (
-          <div className={`sd-verify-banner ${verificationStatus === 'pending' ? 'is-pending' : 'is-warn'}`}>
-            <span className="sd-verify-ic">
-              {verificationStatus === 'pending' ? <Clock size={18} /> : <ShieldAlert size={18} />}
-            </span>
-            <div>
-              <strong>
-                {verificationStatus === 'pending' && 'Verification pending'}
-                {verificationStatus === 'rejected' && 'Verification rejected'}
-                {verificationStatus === 'unverified' && 'Not verified yet'}
-              </strong>
-              <p className="muted small">
-                {verificationStatus === 'pending' && "Our admins are reviewing your application. You'll see a Verified badge once approved."}
-                {verificationStatus === 'rejected' && (user?.verification?.reason || 'Please contact support to update your details.')}
-                {verificationStatus === 'unverified' && 'Complete your seller registration so admins can review your account.'}
-              </p>
-            </div>
+        <section className="sd-stats" aria-label="Shop at a glance">
+          <div className="sd-stat">
+            <span className="sd-stat-ic"><Package size={17} /></span>
+            <strong>{stats ? active : '–'}{plan?.maxListings ? <small> / {plan.maxListings}</small> : null}</strong>
+            <span>Active listings</span>
+            {plan?.maxListings ? (
+              <span className="sd-meter" aria-hidden="true">
+                <span style={{ width: `${Math.min(100, (active / plan.maxListings) * 100)}%` }} />
+              </span>
+            ) : null}
           </div>
-        )}
-
-        {/* Manage — list rows */}
-        <section>
-          <h3 className="sd-section-label">Manage</h3>
-          <div className="sd-nav-list">
-            {MANAGE_ITEMS.map(({ path, icon: Icon, label, desc, badge }, i) => (
-              <motion.button
-                key={path}
-                className="sd-nav-row"
-                onClick={() => navigate(path)}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04 }}
-                type="button"
-              >
-                <span className="sd-nav-ic"><Icon size={20} /></span>
-                <div className="sd-nav-body">
-                  <strong>{label}</strong>
-                  <p className="muted small">{desc}</p>
-                </div>
-                {badge > 0 && <span className="sd-nav-badge">{badge}</span>}
-                <ChevronRight size={18} className="muted" />
-              </motion.button>
-            ))}
+          <div className="sd-stat">
+            <span className="sd-stat-ic"><Eye size={17} /></span>
+            <strong>{stats ? views.toLocaleString() : '–'}</strong>
+            <span>Listing views</span>
+          </div>
+          <div className="sd-stat">
+            <span className="sd-stat-ic"><Wallet size={17} /></span>
+            <strong>{ghs(earned)}</strong>
+            <span>Earned from completed sales</span>
           </div>
         </section>
 
-        {/* Account links */}
-        <section>
-          <h3 className="sd-section-label">Account</h3>
-          <div className="sd-nav-list">
-            {ACCOUNT_ITEMS.map(({ path, icon: Icon, label, desc }) => (
-              <button
-                key={path}
-                className="sd-nav-row"
-                onClick={() => navigate(path)}
-                type="button"
-              >
-                <span className="sd-nav-ic account"><Icon size={20} /></span>
-                <div className="sd-nav-body">
-                  <strong>{label}</strong>
-                  <p className="muted small">{desc}</p>
+        <div className="sd-cols">
+          <div className="sd-col">
+            {tasks.length > 0 && (
+              <section>
+                <h2 className="sd-section-label">Needs your attention</h2>
+                <div className="sd-nav-list">
+                  {tasks.map((t) => <NavRow key={t.label} {...t} />)}
                 </div>
-                <ChevronRight size={18} className="muted" />
-              </button>
-            ))}
+              </section>
+            )}
 
-            <button className="sd-nav-row danger" onClick={onLogout} type="button">
-              <span className="sd-nav-ic danger"><LogOut size={20} /></span>
-              <div className="sd-nav-body">
-                <strong>Sign out</strong>
-                <p className="muted small">End this session on this device</p>
+            <section>
+              <h2 className="sd-section-label">Your shop</h2>
+              <div className="sd-nav-list">
+                <NavRow to="/seller-dashboard/listings" icon={Package} label="Listings" desc={`${active} active`} />
+                <NavRow to="/seller-dashboard/sales" icon={TrendingUp} label="Orders from buyers" desc="Everything you've sold" badge={toHandle} />
+                <NavRow to="/chats" icon={MessageCircle} label="Messages" desc="Chats with buyers and sellers" />
               </div>
-              <ChevronRight size={18} className="muted" />
-            </button>
+            </section>
           </div>
-        </section>
 
-        <Footer />
+          <div className="sd-col">
+            <section>
+              <h2 className="sd-section-label">Account</h2>
+              <div className="sd-nav-list">
+                <NavRow
+                  to="/seller/subscription"
+                  icon={Crown}
+                  label="Plan"
+                  desc={`${plan?.name || 'Free'}${plan?.feePct != null ? ` · buyers pay ${plan.feePct}% fee` : ''}`}
+                />
+                <NavRow to="/profile/orders" icon={ShoppingBag} label="My purchases" desc="Things you've bought" badge={openPurchases} />
+                <NavRow to="/seller/settings" icon={SettingsIc} label="Shop settings" desc="Shop details, payouts and password" />
+                <NavRow to={`/seller/${user?.id}`} icon={Store} label="Your public shop" desc="What buyers see" />
+                <button type="button" className="sd-nav-row is-bad" onClick={onLogout}>
+                  <span className="sd-nav-ic"><LogOut size={19} /></span>
+                  <span className="sd-nav-body"><strong>Sign out</strong></span>
+                </button>
+              </div>
+            </section>
+          </div>
+        </div>
       </main>
 
+      <Footer />
       <BottomNav />
     </div>
   );

@@ -64,11 +64,6 @@
   color: var(--primary-ink);
   border-color: var(--primary-100);
 }
-.chip-count {
-  font-size: 0.72rem; font-weight: 700;
-  color: var(--text-soft);
-}
-.chip.active .chip-count { color: inherit; opacity: 0.75; }
 
 /* ---------- Content ---------- */
 .cat-main { padding-top: 18px; gap: 28px; }

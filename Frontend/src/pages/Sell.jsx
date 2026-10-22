@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { Camera, X, Loader2, CreditCard, Lock, Star, MapPin } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import BottomNav from '../components/BottomNav';
@@ -76,6 +76,18 @@ export default function Sell() {
       setCategories(s?.categories || []);
     }).catch(() => {});
   }, []);
+
+  // Say up front if the seller's plan has no room left, rather than after they fill everything in.
+  const [limit, setLimit] = useState(null); // { plan, active } when at the limit
+  useEffect(() => {
+    if (isEdit) return;
+    Promise.all([sbay.getPlans(), productApi.myStats()]).then(([plans, stats]) => {
+      const sub = user?.subscription;
+      const code = sub?.plan && sub.plan !== 'free' && sub.renewsAt && new Date(sub.renewsAt) > new Date() ? sub.plan : 'free';
+      const plan = plans.find((p) => p.code === code);
+      if (plan?.maxListings && Number(stats.activeListings) >= plan.maxListings) setLimit({ plan, active: stats.activeListings });
+    }).catch(() => {});
+  }, [isEdit, user?.subscription]);
 
   // Back from Paystack after paying the onboarding fee.
   useEffect(() => {
@@ -243,6 +255,15 @@ export default function Sell() {
         ) : (
           <form className="sell-layout" onSubmit={submit} noValidate>
             <div className="sell-form">
+              {limit && (
+                <Notice
+                  tone="warning"
+                  title={`You're using all ${limit.plan.maxListings} listings on the ${limit.plan.name} plan`}
+                  action={<Link className="btn btn-sm btn-primary" to="/seller/subscription">See plans</Link>}
+                >
+                  Mark a listing as sold or delete one in <Link to="/seller-dashboard/listings">your listings</Link>, or upgrade to list more.
+                </Notice>
+              )}
               <section className="card sell-sec">
                 <div className="sell-sec-h">
                   <h2>Photos</h2>

@@ -2,18 +2,7 @@
 
 .order-tabs { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
 .order-tabs::-webkit-scrollbar { display: none; }
-.tab-count {
-  min-width: 20px;
-  padding: 0 6px;
-  border-radius: var(--r-pill);
-  background: var(--surface-3);
-  color: var(--text-muted);
-  font-size: 0.72rem;
-  font-weight: 800;
-  line-height: 20px;
-  text-align: center;
-}
-.chip.active .tab-count { background: rgba(255, 255, 255, 0.2); color: #fff; }
+.order-tabs .chip { flex-shrink: 0; }
 
 .olist { display: flex; flex-direction: column; gap: 12px; }
 .ocard {

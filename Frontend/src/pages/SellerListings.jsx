@@ -1,128 +1,134 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Plus, Edit2, Trash2, Eye, Package } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Plus, Pencil, Trash2, Package, Eye, CheckCircle2, RotateCcw } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import BottomNav from '../components/BottomNav';
 import Footer from '../components/Footer';
-import { productApi } from '../api/client';
+import { SkeletonList } from '../components/Skeleton';
+import { Notice, useToast } from '../components/Feedback';
+import { productApi, sbay } from '../api/client';
 import { useConfirm } from '../store/ConfirmContext';
-import { useToast } from '../components/Feedback';
+import { ghs } from '../utils/money';
 import './pages.css';
 import './SellerDashboard.css';
 
+const TABS = [
+  ['active', 'For sale'],
+  ['sold_out', 'Sold'],
+  ['hidden', 'Hidden by sBay'],
+];
+const STATUS_TEXT = { active: 'For sale', sold_out: 'Sold', hidden: 'Hidden by sBay' };
+
+/** A seller's own listings, with quick actions to edit, mark sold, relist or delete. */
 export default function SellerListings() {
   const navigate = useNavigate();
   const confirm = useConfirm();
   const toast = useToast();
-  const [listings, setListings] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [listingCat, setListingCat] = useState('all');
+  const [listings, setListings] = useState(null);
+  const [tab, setTab] = useState('active');
+  const [busy, setBusy] = useState('');
 
   useEffect(() => {
-    productApi.mine()
-      .then(setListings)
-      .catch(() => setListings([]))
-      .finally(() => setLoading(false));
+    productApi.mine().then(setListings).catch(() => setListings([]));
   }, []);
 
-  const onDelete = async (id, title) => {
+  const counts = useMemo(() => Object.fromEntries(TABS.map(([id]) => [id, (listings || []).filter((l) => l.status === id).length])), [listings]);
+  const visible = (listings || []).filter((l) => l.status === tab);
+
+  const replace = (updated) => setListings((ls) => ls.map((l) => (l.id === updated.id ? updated : l)));
+
+  const setStock = async (p, stock, message) => {
+    setBusy(p.id);
+    try {
+      replace(await productApi.update(p.id, { stock }));
+      sbay.clearListingCache();
+      toast.success(message);
+    } catch (e) {
+      toast.error(e.message || 'Could not update the listing.');
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const onDelete = async (p) => {
     const ok = await confirm({
       title: 'Delete this listing?',
-      body: `"${title}" will be hidden from the marketplace. Existing orders are unaffected.`,
+      body: `"${p.title}" will be removed from sBay. Orders already placed are not affected.`,
       confirmLabel: 'Delete',
       danger: true,
     });
     if (!ok) return;
     try {
-      await productApi.remove(id);
-      setListings((ls) => ls.filter((l) => l.id !== id));
+      await productApi.remove(p.id);
+      setListings((ls) => ls.filter((l) => l.id !== p.id));
+      sbay.clearListingCache();
       toast.success('Listing deleted');
     } catch (e) {
       toast.error(e.message || 'Could not delete this listing.');
     }
   };
 
-  const cats = ['all', ...new Set(listings.map((l) => l.categoryId).filter(Boolean))];
-  const visible = listings.filter((l) =>
-    listingCat === 'all' ? true : l.categoryId === listingCat
-  );
-
   return (
     <div className="page">
-      <TopBar showBack title="My listings" showSearch={false} />
-      <main className="page-main">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <p className="muted small">{listings.length} listing{listings.length !== 1 ? 's' : ''}</p>
-          <button className="btn btn-primary" onClick={() => navigate('/sell')}>
-            <Plus size={15} /> New listing
-          </button>
-        </div>
-
-        {!loading && listings.length === 0 && (
-          <div className="empty">
-            <span className="empty-ic"><Package size={26} /></span>
-            <h3>No listings yet</h3>
-            <p>Create your first listing to start selling.</p>
-            <button className="btn btn-primary" onClick={() => navigate('/sell')}>
-              <Plus size={16} /> Create listing
-            </button>
-          </div>
-        )}
-
-        {cats.length > 1 && (
-          <div className="sd-listing-filter">
-            {cats.map((c) => (
-              <button
-                key={c}
-                className={`sd-filter-pill ${listingCat === c ? 'active' : ''}`}
-                onClick={() => setListingCat(c)}
-              >
-                {c === 'all' ? 'All' : c.charAt(0).toUpperCase() + c.slice(1)}
+      <TopBar showBack title="Listings" showSearch={false} />
+      <main className="page-main sd-sub">
+        <div className="sd-sub-head">
+          <div className="sd-tabs" role="tablist" aria-label="Filter listings">
+            {TABS.map(([id, label]) => (
+              <button key={id} role="tab" aria-selected={tab === id} className={`chip ${tab === id ? 'active' : ''}`} onClick={() => setTab(id)}>
+                {label}{counts[id] > 0 && <span className="chip-count">{counts[id]}</span>}
               </button>
             ))}
           </div>
+          <button className="btn btn-primary" onClick={() => navigate('/sell')}><Plus size={16} /> New listing</button>
+        </div>
+
+        {tab === 'hidden' && counts.hidden > 0 && (
+          <Notice tone="warning">The sBay team hid these listings. <Link to="/help#contact">Contact us</Link> if you think that's a mistake.</Notice>
         )}
 
-        <div className="sd-listings">
-          {visible.map((p, i) => (
-            <motion.article
-              key={p.id}
-              className="sd-listing"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.04 }}
-            >
-              <div className="sd-thumb" style={{ backgroundImage: `url(${p.image})` }} />
-              <div className="sd-meta">
-                <h4>{p.title}</h4>
-                <p className="muted small">
-                  {p.tag || p.condition} · {p.stock ?? 0} in stock
-                  {p.status && p.status !== 'active' && ` · ${p.status}`}
-                </p>
-                <span className="price">GH₵ {p.price.toLocaleString()}</span>
-              </div>
-              <div className="sd-actions">
-                <button className="iac" onClick={() => navigate(`/product/${p.id}`)} aria-label="View">
-                  <Eye size={16} />
-                </button>
-                <button className="iac" onClick={() => navigate(`/seller/listing/${p.id}/edit`)} aria-label="Edit">
-                  <Edit2 size={16} />
-                </button>
-                <button className="iac danger" onClick={() => onDelete(p.id, p.title)} aria-label="Delete">
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            </motion.article>
-          ))}
-          {listings.length > 0 && visible.length === 0 && (
-            <div className="empty">
-              <Package size={48} color="#C9D4BD" />
-              <h3>No listings in this category</h3>
-              <button className="chip" onClick={() => setListingCat('all')}>Show all</button>
-            </div>
-          )}
-        </div>
+        {listings === null ? <SkeletonList count={4} /> : visible.length === 0 ? (
+          <div className="empty">
+            <span className="empty-ic"><Package size={26} /></span>
+            <h3>{tab === 'active' ? 'Nothing for sale yet' : tab === 'sold_out' ? 'Nothing sold yet' : 'No hidden listings'}</h3>
+            {tab === 'active' && (
+              <>
+                <p>List something you no longer need. It takes about a minute.</p>
+                <button className="btn btn-primary" onClick={() => navigate('/sell')}><Plus size={16} /> List an item</button>
+              </>
+            )}
+          </div>
+        ) : (
+          <ul className="sd-items">
+            {visible.map((p) => (
+              <li key={p.id} className="sd-item">
+                <Link to={`/product/${p.id}`} className="sd-item-thumb"><img src={p.image} alt="" loading="lazy" /></Link>
+                <div className="sd-item-body">
+                  <Link to={`/product/${p.id}`} className="sd-item-title">{p.title}</Link>
+                  <div className="sd-item-meta">
+                    <strong>{ghs(p.price)}</strong>
+                    <span>{STATUS_TEXT[p.status]}{p.status === 'active' ? ` · ${p.stock} left` : ''}</span>
+                    <span className="sd-item-views"><Eye size={13} aria-hidden="true" /> {p.views || 0}</span>
+                  </div>
+                </div>
+                <div className="sd-item-actions">
+                  {p.status === 'active' && (
+                    <button className="btn btn-ghost btn-sm" disabled={busy === p.id} onClick={() => setStock(p, 0, 'Marked as sold')}>
+                      <CheckCircle2 size={15} /> Mark sold
+                    </button>
+                  )}
+                  {p.status === 'sold_out' && (
+                    <button className="btn btn-ghost btn-sm" disabled={busy === p.id} onClick={() => setStock(p, 1, 'Back on sale')}>
+                      <RotateCcw size={15} /> Relist
+                    </button>
+                  )}
+                  <button className="icon-action" onClick={() => navigate(`/seller/listing/${p.id}/edit`)} aria-label={`Edit ${p.title}`}><Pencil size={16} /></button>
+                  <button className="icon-action icon-action--danger" onClick={() => onDelete(p)} aria-label={`Delete ${p.title}`}><Trash2 size={16} /></button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </main>
       <Footer />
       <BottomNav />

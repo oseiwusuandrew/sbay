@@ -120,7 +120,7 @@ export default function ProfileOrders() {
               className={`chip ${activeTab === t.id ? 'active' : ''}`}
               onClick={() => setTab(t.id)}
             >
-              {t.label}{counts[t.id] > 0 && <span className="tab-count">{counts[t.id]}</span>}
+              {t.label}{counts[t.id] > 0 && <span className="chip-count">{counts[t.id]}</span>}
             </button>
           ))}
         </div>
