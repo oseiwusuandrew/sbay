@@ -6,6 +6,8 @@ import { Settings } from '../models/Settings.js';
 import { Chat } from '../models/Chat.js';
 import { Message } from '../models/Message.js';
 import { AuditLog } from '../models/AuditLog.js';
+import { Review } from '../models/Review.js';
+import { PaymentSession } from '../models/PaymentSession.js';
 import { signAccessToken } from '../utils/jwt.js';
 import { HttpError } from '../utils/httpError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -170,6 +172,11 @@ export const restrictUser = asyncHandler(async (req, res) => {
   user.restrictedBy = restricted ? req.user._id : undefined;
   await user.save();
 
+  // A restricted seller's listings leave the marketplace with them and
+  // come back exactly as they were when the restriction is lifted.
+  await Product.updateMany({ seller: user._id }, { $set: { sellerSuspended: !!restricted } });
+  invalidateCatalogCache();
+
   audit(req, restricted ? 'user.restrict' : 'user.unrestrict', { kind: 'user', id: user._id }, { reason });
   res.json({ user });
 });
@@ -214,12 +221,10 @@ export const createAdmin = asyncHandler(async (req, res) => {
 /* ----------------------- User Deletion ------------------------ */
 
 /**
- * DELETE /users/:id — soft-delete an account.
- *
- * We never hard-delete because every order, listing, and audit row
- * references this _id. Instead we anonymise PII, mark the account
- * deleted, and prevent further logins. The user's transactional
- * history is preserved for compliance / dispute resolution.
+ * DELETE /users/:id — permanently delete an account and everything it owns:
+ * listings, orders, chats, reviews and unfinished payment sessions.
+ * Refused while any of their orders still has money held in escrow.
+ * The audit log keeps a record of who deleted whom.
  */
 export const deleteUser = asyncHandler(async (req, res) => {
   if (req.params.id === req.user._id.toString()) {
@@ -244,6 +249,12 @@ export const deleteUser = asyncHandler(async (req, res) => {
   if (heldOrders > 0) {
     throw new HttpError(409, `This user has ${heldOrders} order(s) with funds still in escrow. Release or refund them first.`);
   }
+  const owedPayments = await PaymentSession.countDocuments({
+    buyer: target._id, status: { $in: ['processing', 'needs_refund'] },
+  });
+  if (owedPayments > 0) {
+    throw new HttpError(409, `This user has ${owedPayments} payment(s) still processing or waiting for a refund. Resolve them first.`);
+  }
 
   // CASCADE DELETE: remove everything belonging to this user
   // 1. Delete all their products (hard delete)
@@ -260,8 +271,15 @@ export const deleteUser = asyncHandler(async (req, res) => {
     await Chat.deleteMany({ _id: { $in: chatIds } });
   }
 
-  // 4. Delete the user document itself
+  // 4. Reviews they wrote or received, and payments they never finished
+  await Review.deleteMany({ $or: [{ seller: target._id }, { reviewer: target._id }] });
+  await PaymentSession.deleteMany({ buyer: target._id, status: { $in: ['pending', 'failed'] } });
+
+  // 5. Delete the user document itself
   await User.deleteOne({ _id: target._id });
+
+  // Their listings are gone; drop cached feeds that still contain them.
+  invalidateCatalogCache();
 
   audit(req, 'user.delete', { kind: 'user', id: target._id, email: target.email, role: target.role });
   res.json({ ok: true, message: `User ${target.email} and all associated data permanently deleted.` });

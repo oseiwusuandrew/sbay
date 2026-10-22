@@ -18,7 +18,7 @@ export default function Cart() {
   const navigate = useNavigate();
   const confirm = useConfirm();
   const { user } = useAuth();
-  const { items, updateQty, removeItem, clear, subtotal, count } = useCart();
+  const { items, updateQty, removeItem, clear, subtotal, count, removedCount, dismissRemoved } = useCart();
 
   // Signed-in buyers get the exact server quote (fees vary by seller plan);
   // guests see the fee once they sign in at checkout.
@@ -52,6 +52,15 @@ export default function Cart() {
       <TopBar showBack title="Cart" showSearch={false} />
 
       <main className="page-main">
+        {removedCount > 0 && (
+          <Notice
+            tone="info"
+            action={<button className="link-btn" onClick={dismissRemoved}>OK</button>}
+          >
+            {removedCount === 1 ? 'An item was' : `${removedCount} items were`} removed from your cart
+            because {removedCount === 1 ? "it's" : "they're"} no longer for sale.
+          </Notice>
+        )}
         {items.length === 0 ? (
           <div className="empty">
             <span className="empty-ic"><ShoppingBag size={26} /></span>

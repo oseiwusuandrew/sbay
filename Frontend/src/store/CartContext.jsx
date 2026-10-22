@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { sbay } from '../api/client';
 
 const CartContext = createContext(null);
 const CART_KEY = 'sbay.cart';
@@ -10,11 +11,28 @@ function loadCart() {
 
 export function CartProvider({ children }) {
   const [items, setItems] = useState(loadCart);
+  // How many saved items were dropped because they're no longer for sale.
+  const [removedCount, setRemovedCount] = useState(0);
 
   useEffect(() => {
     try { localStorage.setItem(CART_KEY, JSON.stringify(items)); }
     catch { /* quota exceeded — ignore */ }
   }, [items]);
+
+  // The cart lives on the device, so a listing can be removed or its seller
+  // deleted while it sits here. Drop those once per visit.
+  useEffect(() => {
+    const saved = loadCart();
+    if (!saved.length) return;
+    sbay.availableIds(saved.map((i) => i.id)).then((available) => {
+      if (!available) return;
+      setItems((cur) => {
+        const kept = cur.filter((i) => available.has(String(i.id)));
+        if (kept.length !== cur.length) setRemovedCount(cur.length - kept.length);
+        return kept.length === cur.length ? cur : kept;
+      });
+    });
+  }, []);
 
   const clamp = (item, qty) => {
     const n = Math.max(1, Math.floor(Number(qty) || 1));
@@ -54,7 +72,10 @@ export function CartProvider({ children }) {
   const subtotal = useMemo(() => items.reduce((s, i) => s + i.qty * i.price, 0), [items]);
 
   return (
-    <CartContext.Provider value={{ items, addItem, updateQty, removeItem, clear, count, subtotal }}>
+    <CartContext.Provider value={{
+      items, addItem, updateQty, removeItem, clear, count, subtotal,
+      removedCount, dismissRemoved: () => setRemovedCount(0),
+    }}>
       {children}
     </CartContext.Provider>
   );

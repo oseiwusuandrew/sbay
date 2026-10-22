@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { sbay } from '../api/client';
 
 const WishlistContext = createContext(null);
 const KEY = 'sbay.wishlist';
@@ -22,6 +23,20 @@ export function WishlistProvider({ children }) {
   useEffect(() => {
     try { localStorage.setItem(KEY, JSON.stringify(items)); } catch { /* storage full/blocked */ }
   }, [items]);
+
+  // Saved items whose listing was removed (or whose seller was deleted)
+  // are dropped once per visit instead of showing up as dead links.
+  useEffect(() => {
+    const saved = load();
+    if (!saved.length) return;
+    sbay.availableIds(saved.map((i) => i.id)).then((available) => {
+      if (!available) return;
+      setItems((cur) => {
+        const kept = cur.filter((i) => available.has(String(i.id)));
+        return kept.length === cur.length ? cur : kept;
+      });
+    });
+  }, []);
 
   const has = useCallback((id) => items.some((i) => i.id === id), [items]);
 

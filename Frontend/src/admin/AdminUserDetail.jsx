@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { adminApi } from '../api/client';
+import { adminApi, sbay } from '../api/client';
 import {
   ArrowLeft, BadgeCheck, ShieldOff, ShieldCheck, Trash2, Mail, MapPin, Phone,
   Package, ShoppingBag, MessageSquare, BarChart3, IdCard, User as UserIcon,
@@ -105,6 +105,7 @@ export default function AdminUserDetail() {
     }
     try {
       await adminApi.post(`/users/${user._id}/verify`, { decision, reason });
+      toast.success(decision === 'approved' ? 'Verified' : 'Verification rejected');
       load();
     } catch (e) { toast.error(e.message || 'Could not update verification.'); }
   };
@@ -112,21 +113,26 @@ export default function AdminUserDetail() {
   const restrict = async () => {
     try {
       if (user.restricted) {
-        if (!(await confirm(`Lift restriction on ${user.email}?`))) return;
+        if (!(await confirm(`Lift restriction on ${user.email}? Their listings will be visible again.`))) return;
         await adminApi.post(`/users/${user._id}/restrict`, { restricted: false });
+        toast.success(`${user.email} can use sBay again`);
       } else {
-        const reason = await prompt(`Why are you restricting ${user.email}?`, { title: 'Restrict Account', placeholder: 'Enter reason…' });
+        const reason = await prompt(`Why are you restricting ${user.email}? Their listings will be hidden until you lift it.`, { title: 'Restrict Account', placeholder: 'Enter reason…' });
         if (!reason) return;
         await adminApi.post(`/users/${user._id}/restrict`, { restricted: true, reason });
+        toast.success(`${user.email} restricted and their listings hidden`);
       }
+      sbay.clearListingCache();
       load();
     } catch (e) { toast.error(e.message || 'Could not change restriction.'); }
   };
 
   const remove = async () => {
-    if (!(await confirm(`Permanently delete ${user.email}? Listings will be archived; history retained.`))) return;
+    if (!(await confirm(`Permanently delete ${user.email}? Their listings, orders, chats and reviews are deleted too. This cannot be undone.`))) return;
     try {
       await adminApi.delete(`/users/${user._id}`);
+      sbay.clearListingCache();
+      toast.success(`${user.email} and their listings were deleted`);
       navigate('/admin/users', { replace: true });
     } catch (e) { toast.error(e.message || 'Could not delete user.'); }
   };

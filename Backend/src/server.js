@@ -5,6 +5,7 @@ import { buildApp } from './app.js';
 import { initSocket } from './socket.js';
 import { seedAdminIfNeeded } from './seed/seedAdmin.js';
 import { seedPlansIfNeeded } from './seed/seedPlans.js';
+import { repairListings } from './seed/repairListings.js';
 
 async function main() {
   // 1. Connect to MongoDB before we accept any HTTP traffic.
@@ -15,6 +16,9 @@ async function main() {
   // 2. First-boot seeds (admin user, default plans). No-ops if data exists.
   await seedAdminIfNeeded();
   await seedPlansIfNeeded();
+  // Never block boot on housekeeping; a failure here is logged and retried next start.
+  // eslint-disable-next-line no-console
+  await repairListings().catch((err) => console.error('[repair] listings failed:', err.message));
 
   // 3. Build the Express app, wrap in HTTP server, attach Socket.IO.
   const app = buildApp();

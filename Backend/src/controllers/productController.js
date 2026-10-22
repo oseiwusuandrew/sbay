@@ -1,4 +1,4 @@
-import { Product } from '../models/Product.js';
+import { Product, LIVE_LISTING } from '../models/Product.js';
 import { User } from '../models/User.js';
 import { Settings } from '../models/Settings.js';
 import { HttpError } from '../utils/httpError.js';
@@ -8,11 +8,20 @@ import { escapeRegex } from '../utils/regex.js';
 // In-memory cache for catalog meta (schools + categories). Avoids full-scan on every request.
 let catalogCache = { data: null, at: 0 };
 const CATALOG_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+/** Call after anything that changes which listings are public. */
 export function invalidateCatalogCache() { catalogCache = { data: null, at: 0 }; homeFeedCache = { data: null, at: 0 }; }
 
 // In-memory cache for the combined home feed.
 let homeFeedCache = { data: null, at: 0 };
 const HOME_FEED_CACHE_TTL = 60 * 1000; // 1 minute
+
+// Browsers must revalidate public listing responses (cheap 304s via ETag)
+// so a removed listing disappears on the next request, not minutes later.
+const REVALIDATE = 'no-cache';
+
+// A listing whose seller no longer exists must never be shown, even in the
+// moment between an account being deleted and its listings being removed.
+const withSeller = (items) => items.filter((p) => p.seller);
 
 // Joining words stay lowercase mid-name: "University of Ghana", not "Of".
 const MINOR_WORDS = new Set(['of', 'and', 'the', 'for', 'in', 'at', 'on', '&']);
@@ -79,14 +88,14 @@ async function findDuplicateListing(sellerId, candidate, excludeId) {
 export const listCatalogMeta = asyncHandler(async (_req, res) => {
   // Serve from cache if fresh
   if (catalogCache.data && Date.now() - catalogCache.at < CATALOG_CACHE_TTL) {
-    res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+    res.set('Cache-Control', REVALIDATE);
     return res.json(catalogCache.data);
   }
 
-  const items = await Product.find({ status: 'active' })
+  const items = withSeller(await Product.find({ ...LIVE_LISTING })
     .select('school city category seller location')
     .populate('seller', 'verification.university')
-    .lean();
+    .lean());
 
   const categories = new Map();
   const schools = new Map();
@@ -183,7 +192,7 @@ export const listCatalogMeta = asyncHandler(async (_req, res) => {
 
   // Store in cache
   catalogCache = { data: result, at: Date.now() };
-  res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+  res.set('Cache-Control', REVALIDATE);
   res.json(result);
 });
 
@@ -194,24 +203,24 @@ const LIST_SELECT = '-description -removedReason -removedBy -__v';
 export const getHomeFeed = asyncHandler(async (_req, res) => {
   // Serve from cache if fresh
   if (homeFeedCache.data && Date.now() - homeFeedCache.at < HOME_FEED_CACHE_TTL) {
-    res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
+    res.set('Cache-Control', REVALIDATE);
     return res.json(homeFeedCache.data);
   }
 
-  const [trending, recent] = await Promise.all([
-    Product.find({ status: 'active' })
+  const [trending, recent] = (await Promise.all([
+    Product.find({ ...LIVE_LISTING })
       .sort({ views: -1 })
       .limit(12)
       .select(LIST_SELECT)
       .populate('seller', 'name avatar sellerProfile verified location')
       .lean(),
-    Product.find({ status: 'active' })
+    Product.find({ ...LIVE_LISTING })
       .sort({ createdAt: -1 })
       .limit(12)
       .select(LIST_SELECT)
       .populate('seller', 'name avatar sellerProfile verified location')
       .lean(),
-  ]);
+  ])).map(withSeller);
 
   // Extract unique verified sellers from all fetched products
   const seen = new Set();
@@ -227,7 +236,7 @@ export const getHomeFeed = asyncHandler(async (_req, res) => {
   const result = { trending, recent, sellers };
   homeFeedCache = { data: result, at: Date.now() };
 
-  res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
+  res.set('Cache-Control', REVALIDATE);
   res.json(result);
 });
 
@@ -239,7 +248,7 @@ export const listProducts = asyncHandler(async (req, res) => {
     sort = 'recent', page = 1, limit = 24,
   } = req.query;
 
-  const filter = { status: 'active' };
+  const filter = { ...LIVE_LISTING };
   if (category) filter.category = exactTextFilter(category);
   if (seller) filter.seller = seller;
   if (location) filter.location = exactTextFilter(location);
@@ -293,8 +302,27 @@ export const listProducts = asyncHandler(async (req, res) => {
     Product.countDocuments(filter),
   ]);
 
-  res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
-  res.json({ items, total, page: Number(page), limit: lim });
+  res.set('Cache-Control', REVALIDATE);
+  res.json({ items: withSeller(items), total, page: Number(page), limit: lim });
+});
+
+/**
+ * POST /api/products/availability — { ids } → { available: [ids] }.
+ * Lets the app prune carts, wishlists and "recently viewed" lists that
+ * live on the device, so listings removed since are not shown again.
+ */
+export const checkAvailability = asyncHandler(async (req, res) => {
+  const ids = (Array.isArray(req.body?.ids) ? req.body.ids : [])
+    .map(String)
+    .filter((id) => /^[a-f\d]{24}$/i.test(id))
+    .slice(0, 200);
+  if (!ids.length) return res.json({ available: [] });
+
+  const items = withSeller(await Product.find({ _id: { $in: ids }, status: { $in: ['active', 'sold_out'] }, sellerSuspended: { $ne: true } })
+    .select('_id seller')
+    .populate('seller', '_id')
+    .lean());
+  res.json({ available: items.map((p) => String(p._id)) });
 });
 
 /**
@@ -305,11 +333,13 @@ export const listProducts = asyncHandler(async (req, res) => {
 export const getProduct = asyncHandler(async (req, res) => {
   const p = await Product.findOne({ _id: req.params.id, status: { $ne: 'removed' } })
     .populate('seller', 'name avatar sellerProfile verified location createdAt');
-  if (!p) throw new HttpError(404, 'Product not found');
+  // No seller means the account was deleted: the listing is gone for everyone.
+  if (!p || !p.seller) throw new HttpError(404, 'Product not found');
 
   const viewerId = req.user?._id?.toString();
-  const isOwner = viewerId && p.seller?._id?.toString() === viewerId;
-  if (p.status === 'hidden' && !isOwner && req.user?.role !== 'admin') {
+  const isOwner = viewerId && p.seller._id.toString() === viewerId;
+  const privileged = isOwner || req.user?.role === 'admin';
+  if ((p.status === 'hidden' || p.sellerSuspended) && !privileged) {
     throw new HttpError(404, 'Product not found');
   }
 

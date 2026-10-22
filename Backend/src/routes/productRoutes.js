@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { body, param, query } from 'express-validator';
 import {
   listCatalogMeta, listProducts, getProduct, getHomeFeed, createProduct,
-  updateProduct, deleteProduct, myListings, myListingStats,
+  updateProduct, deleteProduct, myListings, myListingStats, checkAvailability,
 } from '../controllers/productController.js';
 import { requireAuth, requireRole, optionalAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
@@ -12,6 +12,7 @@ const router = Router();
 router.get('/catalog', listCatalogMeta);
 router.get('/home', getHomeFeed);
 router.get('/', query('seller').optional().isMongoId(), validate, listProducts);
+router.post('/availability', body('ids').isArray({ max: 200 }), validate, checkAvailability);
 
 router.get('/mine', requireAuth, requireRole('seller'), myListings);
 router.get('/mine/stats', requireAuth, requireRole('seller'), myListingStats);

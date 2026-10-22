@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { adminApi } from '../api/client';
+import { adminApi, sbay } from '../api/client';
 import {
   ArrowLeft, BadgeCheck, ShieldOff, ShieldCheck, Trash2, Mail, MapPin,
   Package, ShoppingBag, MessageSquare, BarChart3,
@@ -84,24 +84,34 @@ export default function AdminSellerDetail() {
       reason = await prompt('Why are you rejecting verification?', { title: 'Reject Verification', placeholder: 'Enter reason…' });
       if (reason === null) return;
     }
-    await adminApi.post(`/users/${seller._id}/verify`, { decision, reason });
-    load();
+    try {
+      await adminApi.post(`/users/${seller._id}/verify`, { decision, reason });
+      toast.success(decision === 'approved' ? 'Seller verified' : 'Verification rejected');
+      load();
+    } catch (e) { toast.error(e.message || 'Could not update verification.'); }
   };
   const restrict = async () => {
-    if (seller.restricted) {
-      if (!(await confirm(`Lift restriction on ${seller.email}?`))) return;
-      await adminApi.post(`/users/${seller._id}/restrict`, { restricted: false });
-    } else {
-      const reason = await prompt(`Why are you restricting ${seller.email}?`, { title: 'Restrict Seller', placeholder: 'Enter reason…' });
-      if (!reason) return;
-      await adminApi.post(`/users/${seller._id}/restrict`, { restricted: true, reason });
-    }
-    load();
+    try {
+      if (seller.restricted) {
+        if (!(await confirm(`Lift restriction on ${seller.email}? Their listings will be visible again.`))) return;
+        await adminApi.post(`/users/${seller._id}/restrict`, { restricted: false });
+        toast.success(`${seller.email} can sell again`);
+      } else {
+        const reason = await prompt(`Why are you restricting ${seller.email}? Their listings will be hidden until you lift it.`, { title: 'Restrict Seller', placeholder: 'Enter reason…' });
+        if (!reason) return;
+        await adminApi.post(`/users/${seller._id}/restrict`, { restricted: true, reason });
+        toast.success(`${seller.email} restricted and their listings hidden`);
+      }
+      sbay.clearListingCache();
+      load();
+    } catch (e) { toast.error(e.message || 'Could not change restriction.'); }
   };
   const remove = async () => {
-    if (!(await confirm(`Permanently delete ${seller.email}? All their listings and history will also be archived.`))) return;
+    if (!(await confirm(`Permanently delete ${seller.email}? Their listings, orders, chats and reviews are deleted too. This cannot be undone.`))) return;
     try {
       await adminApi.delete(`/users/${seller._id}`);
+      sbay.clearListingCache();
+      toast.success(`${seller.email} and their listings were deleted`);
       navigate('/admin/users/sellers', { replace: true });
     } catch (e) { toast.error(e.message || 'Could not delete seller.'); }
   };

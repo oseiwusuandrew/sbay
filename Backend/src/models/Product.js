@@ -44,6 +44,10 @@ const productSchema = new mongoose.Schema(
     removedReason: String,
     removedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 
+    // Set while the seller's account is restricted. Kept separate from
+    // `status` so lifting the restriction restores exactly what was there.
+    sellerSuspended: { type: Boolean, default: false, index: true },
+
     views: { type: Number, default: 0 },
   },
   { timestamps: true }
@@ -55,5 +59,12 @@ productSchema.index({ title: 'text', description: 'text', category: 'text' });
 productSchema.index({ status: 1, createdAt: -1 });  // recent active products
 productSchema.index({ status: 1, views: -1 });      // popular active products
 productSchema.index({ status: 1, school: 1, category: 1 }); // category page filtering
+
+/**
+ * What the public may see: active listings from sellers in good standing.
+ * Spread it into every public query (`{ ...LIVE_LISTING, category }`) so
+ * there is one definition of "visible".
+ */
+export const LIVE_LISTING = Object.freeze({ status: 'active', sellerSuspended: { $ne: true } });
 
 export const Product = mongoose.model('Product', productSchema);

@@ -41,7 +41,9 @@ export async function quoteCart(items, buyerId, { session } = {}) {
   for (const [id, qty] of merged) {
     const product = productMap.get(id);
     if (!product) throw new HttpError(404, 'One of the items in your cart no longer exists');
-    if (product.status !== 'active') throw new HttpError(409, `"${product.title}" is no longer available`);
+    if (product.status !== 'active' || product.sellerSuspended) {
+      throw new HttpError(409, `"${product.title}" is no longer available`);
+    }
     if (buyerId && product.seller.toString() === buyerId.toString()) {
       throw new HttpError(400, 'You cannot buy your own listing');
     }

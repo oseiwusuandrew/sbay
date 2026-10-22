@@ -1,5 +1,5 @@
 import { User } from '../models/User.js';
-import { Product } from '../models/Product.js';
+import { Product, LIVE_LISTING } from '../models/Product.js';
 import { Order } from '../models/Order.js';
 import { Review } from '../models/Review.js';
 import { Chat } from '../models/Chat.js';
@@ -120,7 +120,7 @@ export const getSellerById = asyncHandler(async (req, res) => {
   if (!seller) throw new HttpError(404, 'Seller not found');
 
   const [listings, reviewSummary] = await Promise.all([
-    Product.find({ seller: seller._id, status: 'active' })
+    Product.find({ ...LIVE_LISTING, seller: seller._id })
       .sort({ createdAt: -1 })
       .limit(24),
     Review.aggregate([

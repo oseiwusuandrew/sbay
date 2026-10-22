@@ -84,8 +84,17 @@ export default function ProductDetail() {
       .then((p) => {
         if (!alive) return;
         setProduct(p);
-        setRecentlyViewed(readRecentlyViewed().filter((x) => x.id !== p.id).slice(0, 10));
         pushRecentlyViewed(p);
+        // Only show recently viewed listings that are still for sale.
+        const others = readRecentlyViewed().filter((x) => x.id !== p.id);
+        sbay.availableIds(others.map((x) => x.id)).then((available) => {
+          if (!alive) return;
+          const live = available ? others.filter((x) => available.has(String(x.id))) : others;
+          if (available && live.length !== others.length) {
+            try { localStorage.setItem(RV_KEY, JSON.stringify([readRecentlyViewed()[0], ...live].filter(Boolean))); } catch { /* ignore */ }
+          }
+          setRecentlyViewed(live.slice(0, 10));
+        });
 
         if (p.sellerId) {
           sbay.getSeller(p.sellerId).then((s) => { if (alive) setSeller(s); }).catch(() => {});

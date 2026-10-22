@@ -99,6 +99,9 @@ export const api = makeClient(API_URL);
 export const adminApi = makeClient(ADMIN_URL);
 
 const NOTIFICATIONS = { Today: [], Yesterday: [] };
+// Listing caches stay short: a removed listing or deleted seller should
+// disappear within a minute, not linger for the whole session.
+const LISTING_TTL = 60_000;
 const cache = new Map();
 const inflight = new Map(); // deduplicate concurrent requests for same key
 const cached = async (key, ttlMs, fetcher, { force = false } = {}) => {
@@ -122,6 +125,27 @@ const cached = async (key, ttlMs, fetcher, { force = false } = {}) => {
    `sbay` — same surface as before, now backed by real HTTP.
 ------------------------------------------------------------------ */
 export const sbay = {
+  /** Forget cached listing feeds, e.g. after an admin removes a seller. */
+  clearListingCache() {
+    cache.clear();
+  },
+
+  /**
+   * Which of these listing ids are still for sale. Used to prune carts,
+   * wishlists and "recently viewed" lists kept on the device. Resolves to
+   * null when the check itself fails, so callers keep what they have.
+   */
+  async availableIds(ids) {
+    const valid = [...new Set(ids)].filter((id) => /^[a-f\d]{24}$/i.test(String(id)));
+    if (!valid.length) return new Set();
+    try {
+      const { data } = await api.post('/products/availability', { ids: valid });
+      return new Set(data.available);
+    } catch {
+      return null;
+    }
+  },
+
   async getUniversities() {
     const meta = await this.getCatalogMeta();
     return meta.schools.map((s) => ({
@@ -132,7 +156,7 @@ export const sbay = {
   },
 
   async getCatalogMeta({ force = false } = {}) {
-    return cached('catalog-meta', 1_800_000, async () => {
+    return cached('catalog-meta', LISTING_TTL, async () => {
       const { data } = await api.get('/products/catalog');
       return data;
     }, { force });
@@ -152,7 +176,7 @@ export const sbay = {
   },
 
   async getHomeFeed() {
-    return cached('home-feed', 600_000, async () => {
+    return cached('home-feed', LISTING_TTL, async () => {
       const { data } = await api.get('/products/home');
       return {
         trending: data.trending.map(adaptProduct),
@@ -165,8 +189,8 @@ export const sbay = {
   async getTrending() {
     // Try home feed cache first to avoid a separate call
     const hit = cache.get('home-feed');
-    if (hit && Date.now() - hit.at < 600_000) return hit.value.trending;
-    return cached('products-trending', 600_000, async () => {
+    if (hit && Date.now() - hit.at < LISTING_TTL) return hit.value.trending;
+    return cached('products-trending', LISTING_TTL, async () => {
       const { data } = await api.get('/products', { params: { sort: 'popular', limit: 12 } });
       return data.items.map(adaptProduct);
     });
@@ -175,8 +199,8 @@ export const sbay = {
   async getRecent() {
     // Try home feed cache first to avoid a separate call
     const hit = cache.get('home-feed');
-    if (hit && Date.now() - hit.at < 600_000) return hit.value.recent;
-    return cached('products-recent', 600_000, async () => {
+    if (hit && Date.now() - hit.at < LISTING_TTL) return hit.value.recent;
+    return cached('products-recent', LISTING_TTL, async () => {
       const { data } = await api.get('/products', { params: { sort: 'recent', limit: 12 } });
       return data.items.map(adaptProduct);
     });
@@ -201,7 +225,7 @@ export const sbay = {
   async getSellers() {
     // Try home feed cache first — avoids a redundant product fetch
     const hit = cache.get('home-feed');
-    if (hit && Date.now() - hit.at < 600_000) return hit.value.sellers;
+    if (hit && Date.now() - hit.at < LISTING_TTL) return hit.value.sellers;
     // Fallback: derive from popular listings
     const { data } = await api.get('/products', { params: { sort: 'popular', limit: 30 } });
     const seen = new Set();
