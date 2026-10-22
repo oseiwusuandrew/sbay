@@ -1,105 +1,54 @@
-.vf-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-top: 12px;
-}
-.vf-grid label.full { grid-column: 1 / -1; }
-.vf-grid label { display: flex; flex-direction: column; gap: 6px; }
-.vf-grid label span {
-  font-size: .82rem; font-weight: 600; color: var(--text-muted);
-}
-.vf-grid input,
-.vf-grid select {
-  padding: 12px 12px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  font-family: inherit;
-  font-size: 1rem;
-  color: var(--text);
-  outline: none;
-  transition: border-color .15s ease, box-shadow .15s ease;
-}
-.vf-grid input:focus,
-.vf-grid select:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 4px rgba(10,126,62,0.1);
-  background: #fff;
-}
-@media (max-width: 540px) {
-  .vf-grid { grid-template-columns: 1fr; }
-}
+.vf-page { max-width: 640px; }
 
-.vf-upload {
-  margin-top: 14px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 28px 16px;
-  border: 2px dashed var(--border);
-  border-radius: var(--r-lg);
-  background: var(--bg);
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: border-color .15s ease, background .15s ease;
-  min-height: 160px;
-  text-align: center;
-}
-.vf-upload:hover { border-color: var(--primary); background: #fff; }
-.vf-upload.has {
-  border-style: solid;
-  border-color: var(--primary);
-  padding: 0;
-  overflow: hidden;
-}
-.vf-upload img {
-  width: 100%;
-  height: 240px;
-  object-fit: cover;
-  display: block;
-}
-
-.vf-review {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 12px;
-}
-.vf-review li {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  font-size: .9rem;
-}
-.vf-review li span { color: var(--text-muted); }
-.vf-review li strong { font-weight: 700; text-align: right; }
-
-/* Status screens */
+/* Status */
 .vf-status {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 14px;
+  gap: 12px;
   padding: 36px 22px;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
-  box-shadow: var(--shadow-sm);
 }
-.vf-status h2 { font-size: 1.3rem; font-weight: 800; }
+.vf-status h2 { margin: 0; font-size: 1.3rem; font-weight: 800; }
+.vf-status p { margin: 0; max-width: 42ch; }
 .vf-status-ic {
-  width: 88px; height: 88px;
+  width: 80px; height: 80px;
   border-radius: 50%;
   display: grid; place-items: center;
 }
-.vf-verified .vf-status-ic { background: var(--primary-50); color: var(--primary); }
-.vf-pending  .vf-status-ic { background: #fff4dd; color: #b07700; }
+.vf-verified .vf-status-ic { background: var(--success-50); color: var(--success); }
+.vf-pending .vf-status-ic { background: var(--warning-50); color: var(--warning); }
 .vf-rejected .vf-status-ic { background: var(--error-50); color: var(--error); }
+.vf-unverified .vf-status-ic { background: var(--surface-3); color: var(--text-muted); }
+
+/* Form */
+.vf-form { display: flex; flex-direction: column; gap: 14px; }
+.vf-form > .page-h2 { margin: 0; }
+.vf-form > .muted.small { margin-top: -8px; }
+
+.vf-choice button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+
+.vf-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 170px;
+  padding: 24px 16px;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  color: var(--text-muted);
+  text-align: center;
+  cursor: pointer;
+}
+.vf-upload:hover { border-color: var(--primary); color: var(--primary); }
+.vf-upload.has { padding: 0; border-style: solid; border-color: var(--primary); overflow: hidden; }
+.vf-upload img { width: 100%; max-height: 280px; object-fit: contain; background: var(--surface-3); display: block; }
+
+.vf-actions { display: flex; justify-content: flex-end; gap: 10px; }
+@media (max-width: 640px) { .vf-actions .btn { flex: 1; } }

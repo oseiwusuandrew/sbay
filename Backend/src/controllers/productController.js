@@ -6,6 +6,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { escapeRegex } from '../utils/regex.js';
 import { normalizeImages } from '../utils/media.js';
 import { canonicalCategory } from '../config/catalog.js';
+import { effectivePlan } from '../utils/subscription.js';
 
 // In-memory cache for catalog meta (schools + categories). Avoids full-scan on every request.
 let catalogCache = { data: null, at: 0 };
@@ -377,6 +378,15 @@ export const createProduct = asyncHandler(async (req, res) => {
 
   const canonical = canonicalCategory(category);
   if (!canonical) throw new HttpError(400, 'Choose a category from the list.');
+
+  const plan = await effectivePlan(seller);
+  if (plan?.maxListings) {
+    const active = await Product.countDocuments({ seller: seller._id, status: 'active' });
+    if (active >= plan.maxListings) {
+      throw new HttpError(403, `Your ${plan.name} plan allows ${plan.maxListings} active listings. `
+        + 'Mark something as sold, delete a listing, or upgrade your plan to list more.');
+    }
+  }
 
   // Buyers need to know where to collect the item: the seller's answer,
   // else their profile location. Campus sellers fall back to their school.

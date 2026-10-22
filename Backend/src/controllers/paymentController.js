@@ -5,6 +5,9 @@ import { PaymentSession } from '../models/PaymentSession.js';
 import { Order } from '../models/Order.js';
 import { reserveStock } from '../utils/stock.js';
 import { Settings } from '../models/Settings.js';
+import { User } from '../models/User.js';
+import { Plan } from '../models/Plan.js';
+import { applyPlanPayment } from '../utils/subscription.js';
 import { Chat } from '../models/Chat.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { HttpError } from '../utils/httpError.js';
@@ -340,6 +343,21 @@ export const paystackWebhook = asyncHandler(async (req, res) => {
   const { event, data } = req.body || {};
   if (event !== 'charge.success' || !data?.reference) return;
 
+  // Plan and onboarding payments: credit them even if the seller closed the
+  // tab before Paystack sent them back to the app.
+  const type = data.metadata?.type;
+  if (type === 'subscription' || type === 'onboarding_fee') {
+    try {
+      const user = await User.findById(data.metadata.userId);
+      if (!user) return;
+      if (type === 'subscription') await creditPlanPayment(user, data);
+      else await creditOnboardingFee(user, data);
+    } catch (err) {
+      console.error(`[payments] webhook ${type} credit failed:`, err.message);
+    }
+    return;
+  }
+
   const session = await PaymentSession.findOneAndUpdate(
     { reference: data.reference, status: 'pending' },
     { $set: { status: 'processing' } },
@@ -368,7 +386,7 @@ export const initializeOnboardingFee = asyncHandler(async (req, res) => {
     amount: toPesewas(feeGhs),
     reference,
     currency: 'GHS',
-    callback_url: `${env.FRONTEND_URL || 'https://sbaygh.com'}/sell?onboarding_ref=${reference}`,
+    callback_url: `${env.FRONTEND_URL}/sell?onboarding_ref=${reference}`,
     metadata: { type: 'onboarding_fee', userId: req.user._id.toString() },
   });
   if (!paystackRes?.status || !paystackRes.data?.authorization_url) {
@@ -377,20 +395,9 @@ export const initializeOnboardingFee = asyncHandler(async (req, res) => {
   res.json({ authorization_url: paystackRes.data.authorization_url, reference });
 });
 
-export const verifyOnboardingFee = asyncHandler(async (req, res) => {
-  const { reference } = req.body;
-  if (!reference) throw new HttpError(400, 'Payment reference is required.');
-  if (req.user.onboardingFeePaid) return res.json({ user: req.user });
-
-  const result = await paystackGet(`/transaction/verify/${encodeURIComponent(reference)}`);
-  const data = result?.data;
-  if (!result?.status || data?.status !== 'success') {
-    throw new HttpError(402, 'Payment was not successful. Please try again.');
-  }
-  const meta = data.metadata || {};
-  if (meta.type !== 'onboarding_fee' || meta.userId !== req.user._id.toString()) {
-    throw new HttpError(403, 'Payment reference does not match your account.');
-  }
+/** Credit a verified onboarding-fee charge to its seller. Safe to call twice. */
+async function creditOnboardingFee(user, data) {
+  if (user.onboardingFeePaid) return user;
   // Must have paid the fee that was asked for — the setting can't be
   // dodged by replaying a cheaper (older) onboarding reference.
   const settings = await Settings.getSingleton();
@@ -398,10 +405,74 @@ export const verifyOnboardingFee = asyncHandler(async (req, res) => {
       || Number(data.amount) < toPesewas(settings.sellerOnboardingFee)) {
     throw new HttpError(402, 'The amount paid does not match the current onboarding fee.');
   }
+  user.onboardingFeePaid = true;
+  user.onboardingPaidAt = new Date();
+  user.onboardingRef = data.reference;
+  await user.save();
+  return user;
+}
 
-  req.user.onboardingFeePaid = true;
-  req.user.onboardingPaidAt = new Date();
-  req.user.onboardingRef = reference;
-  await req.user.save();
-  res.json({ user: req.user });
+/** Ask Paystack about a reference and check it is a successful charge of this type for this user. */
+async function verifiedCharge(reference, type, user) {
+  const result = await paystackGet(`/transaction/verify/${encodeURIComponent(reference)}`);
+  const data = result?.data;
+  if (!result?.status || data?.status !== 'success') {
+    throw new HttpError(402, 'Payment was not successful. Please try again.');
+  }
+  const meta = data.metadata || {};
+  if (meta.type !== type || meta.userId !== user._id.toString()) {
+    throw new HttpError(403, 'Payment reference does not match your account.');
+  }
+  return data;
+}
+
+export const verifyOnboardingFee = asyncHandler(async (req, res) => {
+  const { reference } = req.body;
+  if (!reference) throw new HttpError(400, 'Payment reference is required.');
+  if (req.user.onboardingFeePaid) return res.json({ user: req.user });
+  const data = await verifiedCharge(reference, 'onboarding_fee', req.user);
+  res.json({ user: await creditOnboardingFee(req.user, data) });
+});
+
+/* --- Seller plans --------------------------------------------- */
+
+/** POST /payments/subscription/initialize { plan } — pay for 30 days of a plan. */
+export const initializePlanPayment = asyncHandler(async (req, res) => {
+  const plan = await Plan.findOne({ code: String(req.body.plan || '').toLowerCase(), active: true });
+  if (!plan) throw new HttpError(404, 'That plan is not available.');
+  if (!(plan.price > 0)) throw new HttpError(400, 'The Free plan needs no payment.');
+
+  const reference = `SBAY-SUB-${req.user._id}-${Date.now()}`;
+  const paystackRes = await paystackPost('/transaction/initialize', {
+    email: req.user.email,
+    amount: toPesewas(plan.price),
+    reference,
+    currency: 'GHS',
+    callback_url: `${env.FRONTEND_URL}/seller/subscription?sub_ref=${reference}`,
+    metadata: { type: 'subscription', userId: req.user._id.toString(), plan: plan.code },
+  });
+  if (!paystackRes?.status || !paystackRes.data?.authorization_url) {
+    throw new HttpError(502, paystackRes?.message || 'Could not start the payment. Please try again.');
+  }
+  res.json({ authorization_url: paystackRes.data.authorization_url, reference });
+});
+
+/** Credit a verified plan charge: the full plan price, in cedis, for a plan that still exists. */
+async function creditPlanPayment(user, data) {
+  const plan = await Plan.findOne({ code: data.metadata?.plan });
+  if (!plan) throw new HttpError(404, 'That plan no longer exists. Contact support for a refund.');
+  if (String(data.currency || 'GHS').toUpperCase() !== 'GHS' || Number(data.amount) < toPesewas(plan.price)) {
+    throw new HttpError(402, 'The amount paid does not match the plan price.');
+  }
+  if (applyPlanPayment(user, plan.code, data.reference)) await user.save();
+  return user;
+}
+
+/** POST /payments/subscription/verify { reference } — after Paystack sends the seller back. */
+export const verifyPlanPayment = asyncHandler(async (req, res) => {
+  const { reference } = req.body;
+  if (!reference) throw new HttpError(400, 'Payment reference is required.');
+  if (req.user.subscription?.lastRef === reference) return res.json({ user: req.user });
+  const data = await verifiedCharge(reference, 'subscription', req.user);
+  res.json({ user: await creditPlanPayment(req.user, data) });
 });

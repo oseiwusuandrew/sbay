@@ -73,7 +73,8 @@ const subscriptionSchema = new mongoose.Schema(
       default: 'active',
     },
     startedAt: Date,
-    renewsAt: Date,
+    renewsAt: Date,   // end of the paid period; the plan lapses to Free after it
+    lastRef: String,  // last Paystack reference applied, so a payment counts once
   },
   { _id: false }
 );

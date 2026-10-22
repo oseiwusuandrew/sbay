@@ -296,7 +296,7 @@ export default function BecomeSeller() {
                     <Shield size={18} color="#1565C0" />
                     <strong>sBay Privacy Policy</strong>
                     <a
-                      href="/terms"
+                      href="/privacy"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="terms-read-link"

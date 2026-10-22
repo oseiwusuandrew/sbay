@@ -3,6 +3,7 @@ import { Plan } from '../models/Plan.js';
 import { Settings } from '../models/Settings.js';
 import { User } from '../models/User.js';
 import { HttpError } from './httpError.js';
+import { effectivePlanCode } from './subscription.js';
 
 /** Round a GH₵ amount to whole pesewas. */
 export const toPesewas = (ghs) => Math.round(Number(ghs || 0) * 100);
@@ -60,14 +61,15 @@ export async function quoteCart(items, buyerId, { session } = {}) {
   // Resolve each seller's plan fee in one round-trip.
   const sellers = await User.find({ _id: { $in: [...groups.keys()] } })
     .select('subscription').session(session || null);
-  const planCodes = [...new Set(sellers.map((s) => s.subscription?.plan).filter(Boolean))];
+  // A paid plan whose period has ended charges the Free plan's fee.
+  const planCodes = [...new Set(sellers.map((s) => effectivePlanCode(s)))];
   const plans = planCodes.length
     ? await Plan.find({ code: { $in: planCodes } }).session(session || null)
     : [];
   const planFee = new Map(plans.map((p) => [p.code, p.feePct]));
   const sellerFee = new Map(sellers.map((s) => [
     s._id.toString(),
-    planFee.get(s.subscription?.plan) ?? settings.defaultEscrowFeePct,
+    planFee.get(effectivePlanCode(s)) ?? settings.defaultEscrowFeePct,
   ]));
 
   let subtotalP = 0;

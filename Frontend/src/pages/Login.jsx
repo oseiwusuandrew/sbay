@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import AuthLayout from '../components/AuthLayout';
 import OAuthButtons from '../components/OAuthButtons';
@@ -11,7 +11,9 @@ export default function Login() {
   const [params] = useSearchParams();
   const next = params.get('next') || '/home';
   const sellerMode = params.get('mode') === 'seller';
-  const { login } = useAuth();
+  const { login, user, booting } = useAuth();
+  // Someone who opens this page while already signed in goes straight on.
+  const [arrivedSignedIn] = useState(() => Boolean(user) || booting);
   const [email, setEmail] = useState('');
   const [pw, setPw] = useState('');
   const [show, setShow] = useState(false);
@@ -30,6 +32,10 @@ export default function Login() {
       setErr(e2.status === 401 ? 'That email and password don\'t match. Please try again.' : (e2.message || 'Sign-in failed. Please try again.'));
     } finally { setBusy(false); }
   };
+
+  if (arrivedSignedIn && user) {
+    return <Navigate to={user.role === 'admin' ? '/admin' : decodeURIComponent(next)} replace />;
+  }
 
   return (
     <AuthLayout

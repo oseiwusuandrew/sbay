@@ -15,6 +15,7 @@ import BottomNav from '../components/BottomNav';
 import Footer from '../components/Footer';
 import { Skeleton } from '../components/Skeleton';
 import { useToast } from '../components/Feedback';
+import { usePageTitle } from '../components/RouteTitle';
 import { ghs } from '../utils/money';
 import './pages.css';
 import './ProductDetail.css';
@@ -64,6 +65,7 @@ export default function ProductDetail() {
   const [product, setProduct] = useState(null);
   const [error, setError] = useState('');
   const [seller, setSeller] = useState(null);
+  usePageTitle(product?.title);
   const [activeImg, setActiveImg] = useState(0);
   const [qty, setQty] = useState(1);
   const [shareOpen, setShareOpen] = useState(false);

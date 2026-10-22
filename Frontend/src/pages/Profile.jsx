@@ -1,5 +1,5 @@
 import { Navigate, useNavigate } from 'react-router-dom';
-import { Settings, LogOut, ChevronRight, Store, Package, Heart, User } from 'lucide-react';
+import { Settings, LogOut, ChevronRight, Store, Package, Heart, User, MessageCircle, LifeBuoy } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import Avatar from '../components/Avatar';
 import BottomNav from '../components/BottomNav';
@@ -12,10 +12,12 @@ import './pages.css';
 import './Profile.css';
 
 const PROFILE_NAV = [
-  { id: 'orders',        label: 'My Orders',      to: '/profile/orders',   icon: Package,  desc: 'Track and manage your orders' },
-  { id: 'wishlist',      label: 'Wishlist',        to: '/profile/wishlist', icon: Heart,    desc: 'Items you saved for later' },
-  { id: 'become-seller', label: 'Become a Seller', to: '/become-seller',    icon: Store,    desc: 'Start selling on sBay', action: true },
-  { id: 'settings',      label: 'Settings',        to: '/profile/settings', icon: Settings, desc: 'Account, password & preferences' },
+  { id: 'orders',        label: 'My orders',     to: '/profile/orders',   icon: Package,       desc: 'Track, confirm and review orders' },
+  { id: 'messages',      label: 'Messages',      to: '/chats',            icon: MessageCircle, desc: 'Chats with sellers' },
+  { id: 'wishlist',      label: 'Saved items',   to: '/profile/wishlist', icon: Heart,         desc: 'Listings you saved for later' },
+  { id: 'settings',      label: 'Settings',      to: '/profile/settings', icon: Settings,      desc: 'Profile, password and account' },
+  { id: 'help',          label: 'Help',          to: '/help',             icon: LifeBuoy,      desc: 'How sBay works and contacting us' },
+  { id: 'become-seller', label: 'Start selling', to: '/become-seller',    icon: Store,         desc: 'Open a shop and list your first item', action: true },
 ];
 
 export default function Profile() {
@@ -38,12 +40,12 @@ export default function Profile() {
     const ok = await confirm({
       title: 'Sign out?',
       body: 'You will need to sign in again to chat or checkout.',
-      confirmLabel: 'Sign Out',
+      confirmLabel: 'Sign out',
       danger: true,
     });
     if (ok) {
       logout();
-      navigate('/');
+      navigate('/home');
     }
   };
 
@@ -59,8 +61,8 @@ export default function Profile() {
             <h2>You're browsing as a guest</h2>
             <p>Sign in to track orders, save items, chat, and check out.</p>
             <div className="profile-guest-actions">
-              <button className="btn btn-primary" onClick={() => navigate('/login')}>Sign In</button>
-              <button className="btn btn-ghost" onClick={() => navigate('/signup')}>Create Account</button>
+              <button className="btn btn-primary" onClick={() => navigate('/login')}>Sign in</button>
+              <button className="btn btn-ghost" onClick={() => navigate('/signup')}>Create account</button>
             </div>
           </div>
         </main>
@@ -73,7 +75,7 @@ export default function Profile() {
 
   return (
     <div className="page">
-      <TopBar showSearch={false} title="My Profile" />
+      <TopBar showSearch={false} title="My account" />
 
       {/* Hero section */}
       <section className="profile-hero">
@@ -105,7 +107,7 @@ export default function Profile() {
 
       <main className="page-main profile-main">
         <section className="profile-section">
-          <h2 className="profile-section-title">Quick Access</h2>
+          
           <div className="profile-nav-list">
             {PROFILE_NAV.map((item) => (
               <button
@@ -141,7 +143,7 @@ export default function Profile() {
               <LogOut size={20} />
             </span>
             <div className="profile-nav-body">
-              <span className="profile-nav-label">Sign Out</span>
+              <span className="profile-nav-label">Sign out</span>
               <span className="profile-nav-desc">End this session on this device</span>
             </div>
             <ChevronRight size={18} className="profile-nav-chev" />

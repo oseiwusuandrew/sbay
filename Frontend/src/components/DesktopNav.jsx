@@ -63,17 +63,20 @@ export default function DesktopNav() {
           ))}
         </nav>
 
-        <form className="dnav-search-form" onSubmit={submitSearch} role="search">
-          <Search size={16} className="dnav-search-ic" />
-          <input
-            type="search"
-            className="dnav-search-input"
-            placeholder="Search textbooks, phones, fashion…"
-            value={searchQ}
-            onChange={(e) => setSearchQ(e.target.value)}
-            aria-label="Search"
-          />
-        </form>
+        {/* The home page has its own big search box; one per screen is enough. */}
+        {pathname === '/home' ? <span className="dnav-search-form" aria-hidden="true" style={{ visibility: 'hidden' }} /> : (
+          <form className="dnav-search-form" onSubmit={submitSearch} role="search">
+            <Search size={16} className="dnav-search-ic" />
+            <input
+              type="search"
+              className="dnav-search-input"
+              placeholder="Search textbooks, phones, fashion…"
+              value={searchQ}
+              onChange={(e) => setSearchQ(e.target.value)}
+              aria-label="Search"
+            />
+          </form>
+        )}
 
         <div className="dnav-actions">
           <button className="dnav-sell" onClick={goSell}>
@@ -104,7 +107,7 @@ export default function DesktopNav() {
             </button>
           ) : (
             <button className="dnav-signin" onClick={() => navigate('/login')}>
-              Sign In
+              Sign in
             </button>
           )}
         </div>

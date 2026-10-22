@@ -10,6 +10,7 @@ import ProductCard, { ProductGrid } from '../components/ProductCard';
 import Avatar from '../components/Avatar';
 import BottomNav from '../components/BottomNav';
 import Footer from '../components/Footer';
+import { usePageTitle } from '../components/RouteTitle';
 import { Notice } from '../components/Feedback';
 import './pages.css';
 import './SellerProfile.css';
@@ -43,6 +44,7 @@ export default function SellerProfile() {
   const { user } = useAuth();
 
   const [seller, setSeller] = useState(null);
+  usePageTitle(seller?.name);
   const [loadError, setLoadError] = useState('');
   const [reviews, setReviews] = useState({ items: [], total: 0, rating: 0, distribution: [], page: 1 });
   const [reviewsLoading, setReviewsLoading] = useState(true);
@@ -197,7 +199,7 @@ export default function SellerProfile() {
               <p>Check back soon, or save this store's link.</p>
             </div>
           ) : (
-            <ProductGrid dense>
+            <ProductGrid>
               {seller.listings.map((p) => <ProductCard key={p.id} p={{ ...p, sellerName: undefined }} />)}
             </ProductGrid>
           )}

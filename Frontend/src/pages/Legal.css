@@ -1,0 +1,101 @@
+/* ================================================================
+   Help, Terms and Privacy: long-form pages with an on-page index.
+   ================================================================ */
+
+.doc {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 28px;
+  max-width: 1040px;
+  width: 100%;
+  margin: 0 auto;
+}
+@media (min-width: 961px) {
+  .doc { grid-template-columns: 220px minmax(0, 1fr); gap: 48px; }
+}
+
+.doc-head { grid-column: 1 / -1; }
+.doc-head h1 { margin: 0 0 6px; font-size: var(--fs-2xl, 1.75rem); font-weight: 800; letter-spacing: -0.02em; }
+.doc-head p { margin: 0; color: var(--text-muted); max-width: 60ch; }
+
+.doc-toc { display: none; }
+@media (min-width: 961px) {
+  .doc-toc {
+    display: flex; flex-direction: column; gap: 2px;
+    position: sticky; top: calc(var(--nav-h) + 24px);
+    align-self: start;
+  }
+  .doc-toc a {
+    padding: 6px 10px; border-radius: var(--r-sm);
+    color: var(--text-muted); font-size: var(--fs-sm); font-weight: 600; text-decoration: none;
+  }
+  .doc-toc a:hover { background: var(--surface-3); color: var(--text); }
+}
+
+.doc-body { display: flex; flex-direction: column; gap: 36px; min-width: 0; }
+.doc-body section { scroll-margin-top: calc(var(--nav-h) + 16px); }
+.doc-body h2 { margin: 0 0 12px; font-size: var(--fs-xl); font-weight: 800; }
+.doc-body h3 { margin: 18px 0 6px; font-size: var(--fs-md); font-weight: 700; }
+.doc-body p, .doc-body li { color: var(--text-muted); line-height: 1.65; }
+.doc-body p { margin: 0 0 10px; }
+.doc-body ul, .doc-body ol { margin: 0 0 10px; padding-left: 20px; }
+.doc-body li { margin-bottom: 6px; }
+.doc-body strong { color: var(--text); }
+.doc-body a { color: var(--primary); font-weight: 600; }
+
+/* Numbered how-to steps */
+.doc-steps { list-style: none; padding: 0 !important; display: grid; gap: 10px; counter-reset: step; }
+.doc-steps li {
+  counter-increment: step;
+  position: relative;
+  margin: 0;
+  padding: 12px 14px 12px 50px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+.doc-steps li::before {
+  content: counter(step);
+  position: absolute; left: 14px; top: 12px;
+  width: 24px; height: 24px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--primary-50); color: var(--primary);
+  font-size: 0.8rem; font-weight: 800;
+}
+.doc-steps strong { display: block; margin-bottom: 2px; }
+
+/* Fee table */
+.doc-table { width: 100%; border-collapse: collapse; margin: 6px 0 12px; font-size: var(--fs-sm); }
+.doc-table th, .doc-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; }
+.doc-table th { color: var(--text-muted); font-weight: 700; }
+.doc-table td { color: var(--text); }
+
+/* FAQ */
+.doc-faq details {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  margin-bottom: 8px;
+}
+.doc-faq summary {
+  cursor: pointer;
+  padding: 14px 16px;
+  font-weight: 700;
+  color: var(--text);
+  list-style: none;
+  display: flex; justify-content: space-between; gap: 12px;
+}
+.doc-faq summary::-webkit-details-marker { display: none; }
+.doc-faq summary::after { content: '+'; color: var(--text-soft); font-weight: 400; font-size: 1.2rem; line-height: 1; }
+.doc-faq details[open] summary::after { content: '–'; }
+.doc-faq details p { padding: 0 16px 14px; margin: 0; }
+
+.doc-meta { font-size: var(--fs-sm); color: var(--text-soft); }
+
+/* Contact form */
+.contact-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 20px; }
+.contact-form { display: flex; flex-direction: column; gap: 14px; }
+.contact-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+@media (min-width: 641px) { .contact-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.contact-submit { align-self: flex-start; }
+@media (max-width: 640px) { .contact-submit { align-self: stretch; } }

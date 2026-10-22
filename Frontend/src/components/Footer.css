@@ -28,8 +28,7 @@
 }
 
 .sf-brand { display: flex; flex-direction: column; gap: 10px; max-width: 380px; }
-.sf-tagline { color: #fff; font-size: 1.15rem; font-weight: 800; letter-spacing: -0.01em; margin-top: 6px; }
-.sf-mission { line-height: 1.6; }
+.sf-mission { line-height: 1.6; margin-top: 6px; }
 .sf-trust {
   display: inline-flex;
   align-items: center;
@@ -69,7 +68,7 @@
   transition: color .15s ease;
 }
 .sf-cols a:hover, .sf-link:hover { color: #fff; }
-.sf-link svg, .sf-mail svg { flex-shrink: 0; opacity: 0.7; }
+.sf-link svg { flex-shrink: 0; opacity: 0.7; }
 .site-footer :focus-visible { box-shadow: 0 0 0 3px rgba(244, 196, 48, 0.6); }
 
 .sf-base { border-top: 1px solid rgba(255, 255, 255, 0.1); }

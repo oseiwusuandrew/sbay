@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { ShieldCheck, Mail, MapPin } from 'lucide-react';
+import { ShieldCheck, MapPin } from 'lucide-react';
 import Logo from './Logo';
+import { useAuth } from '../store/AuthContext';
 import { useLocation as useCampus } from '../store/LocationContext';
 import './Footer.css';
 
@@ -8,11 +9,13 @@ const PAYMENTS = ['MTN MoMo', 'Telecel Cash', 'AirtelTigo Money', 'Visa', 'Maste
 
 export default function Footer() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { schools, setCampus } = useCampus();
   const campuses = [...schools]
     .filter((s) => s.id !== 'others')
     .sort((a, b) => (b.count || 0) - (a.count || 0))
     .slice(0, 5);
+  const isSeller = user?.role === 'seller';
 
   const shopAt = (school) => {
     setCampus(school);
@@ -27,13 +30,12 @@ export default function Footer() {
       <div className="sf-inner">
         <div className="sf-brand">
           <Link to="/home" aria-label="sBay home"><Logo size="md" tone="light" /></Link>
-          <p className="sf-tagline">Ghana's campus marketplace.</p>
           <p className="sf-mission">
-            Students buying from students, with every payment held in escrow until the item is in your hands.
+            Buy and sell with students on your campus. Every payment is held by sBay until the buyer has the item.
           </p>
           <div className="sf-trust">
             <ShieldCheck size={16} aria-hidden />
-            <span>Escrow-protected payments, secured by Paystack</span>
+            <span>Payments by Paystack</span>
           </div>
           <ul className="sf-pay" aria-label="Accepted payment methods">
             {PAYMENTS.map((p) => <li key={p}>{p}</li>)}
@@ -43,7 +45,6 @@ export default function Footer() {
         <nav className="sf-cols" aria-label="Footer">
           <div>
             <h4>Shop</h4>
-            <Link to="/home">Home</Link>
             <Link to="/categories">Categories</Link>
             <Link to="/trending">Trending</Link>
             <Link to="/profile/wishlist">Saved items</Link>
@@ -51,9 +52,19 @@ export default function Footer() {
           </div>
           <div>
             <h4>Sell</h4>
-            <Link to="/become-seller">Start selling</Link>
-            <Link to="/seller-dashboard">Seller dashboard</Link>
-            <Link to="/seller/subscription">Seller plans</Link>
+            {isSeller ? (
+              <>
+                <Link to="/sell">List an item</Link>
+                <Link to="/seller-dashboard">Seller dashboard</Link>
+                <Link to="/seller/subscription">Seller plans</Link>
+              </>
+            ) : (
+              <>
+                <Link to="/become-seller">Start selling</Link>
+                <Link to="/help#selling">How selling works</Link>
+                <Link to="/help#fees">Fees and plans</Link>
+              </>
+            )}
           </div>
           {campuses.length > 0 && (
             <div>
@@ -67,15 +78,18 @@ export default function Footer() {
           )}
           <div>
             <h4>Help</h4>
-            <Link to="/terms">Terms &amp; escrow policy</Link>
-            <a href="mailto:support@sbaygh.com" className="sf-mail"><Mail size={13} aria-hidden /> support@sbaygh.com</a>
+            <Link to="/help#buying">How buying works</Link>
+            <Link to="/help#safety">Staying safe</Link>
+            <Link to="/help#contact">Contact us</Link>
+            <Link to="/terms">Terms</Link>
+            <Link to="/privacy">Privacy</Link>
           </div>
         </nav>
       </div>
 
       <div className="sf-base">
         <div className="sf-base-inner">
-          <span>© {new Date().getFullYear()} sBay. Made for Ghanaian students.</span>
+          <span>© {new Date().getFullYear()} sBay</span>
           <span>
             Built by{' '}
             <a href="https://portfolio-sooty-eight-54.vercel.app/" target="_blank" rel="noopener noreferrer">MiqroTek</a>

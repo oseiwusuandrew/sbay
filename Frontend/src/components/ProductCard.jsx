@@ -1,6 +1,6 @@
-import { memo } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, MapPin, BadgeCheck } from 'lucide-react';
+import { Heart, MapPin, BadgeCheck, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useWishlist } from '../store/WishlistContext';
 import { ghs } from '../utils/money';
 import './ProductCard.css';
@@ -83,11 +83,44 @@ function ProductCard({ p, rank, variant = 'grid' }) {
 export default memo(ProductCard);
 
 /** Responsive grid wrapper so every page lays tiles out the same way. */
-export function ProductGrid({ children, dense = false }) {
-  return <div className={`pgrid ${dense ? 'pgrid--dense' : ''}`}>{children}</div>;
+export function ProductGrid({ children }) {
+  return <div className="pgrid">{children}</div>;
 }
 
-/** Horizontally scrolling rail (trending, similar items). */
+/**
+ * Horizontally scrolling rail (trending, similar items). Touch screens
+ * swipe; on desktop, arrow buttons page through it instead of a scrollbar.
+ */
 export function ProductRail({ children, label }) {
-  return <div className="prail" role="list" aria-label={label}>{children}</div>;
+  const ref = useRef(null);
+  const [edges, setEdges] = useState({ start: true, end: false });
+
+  const update = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    setEdges({ start: el.scrollLeft < 4, end: el.scrollLeft + el.clientWidth >= el.scrollWidth - 4 });
+  }, []);
+  useEffect(() => {
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, [update, children]);
+
+  const page = (dir) => ref.current?.scrollBy({ left: dir * ref.current.clientWidth * 0.85, behavior: 'smooth' });
+
+  return (
+    <div className="prail-wrap">
+      <div className="prail" role="list" aria-label={label} ref={ref} onScroll={update}>{children}</div>
+      {!edges.start && (
+        <button type="button" className="prail-btn prail-btn--prev" onClick={() => page(-1)} aria-label="Scroll back">
+          <ChevronLeft size={18} />
+        </button>
+      )}
+      {!edges.end && (
+        <button type="button" className="prail-btn prail-btn--next" onClick={() => page(1)} aria-label="Scroll forward">
+          <ChevronRight size={18} />
+        </button>
+      )}
+    </div>
+  );
 }

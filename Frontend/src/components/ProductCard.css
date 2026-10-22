@@ -145,8 +145,8 @@
 @media (min-width: 640px)  { .pgrid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; } }
 @media (min-width: 961px)  { .pgrid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; } }
 @media (min-width: 1280px) { .pgrid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
-@media (min-width: 1280px) { .pgrid--dense { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 
+.prail-wrap { position: relative; }
 .prail {
   display: flex;
   gap: 14px;
@@ -154,8 +154,23 @@
   scroll-snap-type: x mandatory;
   padding: 2px 2px 8px;
   margin: 0 -2px;
-  scrollbar-width: thin;
+  scrollbar-width: none;
 }
+.prail::-webkit-scrollbar { display: none; }
+
+.prail-btn {
+  display: none;
+  position: absolute; top: 38%; z-index: 2;
+  width: 40px; height: 40px; border-radius: 50%;
+  place-items: center;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+}
+.prail-btn:hover { border-color: var(--border-strong); }
+.prail-btn--prev { left: -14px; }
+.prail-btn--next { right: -14px; }
+@media (hover: hover) and (min-width: 961px) { .prail-btn { display: grid; } }
 
 @media (max-width: 480px) {
   .pcard-body { padding: 10px 10px 12px; }

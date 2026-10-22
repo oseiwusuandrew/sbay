@@ -112,6 +112,7 @@ router.post(
   body('name').isString().trim().isLength({ min: 2, max: 60 }),
   body('price').isFloat({ min: 0 }),
   body('feePct').isFloat({ min: 0, max: 100 }),
+  body('maxListings').optional({ values: 'falsy' }).isInt({ min: 1, max: 100000 }),
   body('features').optional().isArray(),
   validate, upsertPlan
 );

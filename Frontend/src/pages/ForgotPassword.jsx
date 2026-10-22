@@ -14,7 +14,6 @@ export default function ForgotPassword() {
 
   const [email, setEmail] = useState(emailFromLink);
   const [pw, setPw] = useState('');
-  const [pw2, setPw2] = useState('');
   const [show, setShow] = useState(false);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
@@ -41,7 +40,6 @@ export default function ForgotPassword() {
     e.preventDefault();
     setErr('');
     if (pw.length < 8) { setErr('Use at least 8 characters.'); return; }
-    if (pw !== pw2) { setErr("The two passwords don't match."); return; }
     setBusy(true);
     try {
       await resetPassword({ email: email.trim(), token, newPassword: pw });
@@ -81,13 +79,7 @@ export default function ForgotPassword() {
                 {show ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
-          </div>
-          <div className="field">
-            <label htmlFor="fp-pw2">Confirm new password</label>
-            <div className="field-input">
-              <Lock size={18} className="lead" aria-hidden />
-              <input id="fp-pw2" type={show ? 'text' : 'password'} autoComplete="new-password" placeholder="Type it again" value={pw2} onChange={(e) => setPw2(e.target.value)} minLength={8} required />
-            </div>
+            <span className="field-hint">A short phrase is easy to remember and hard to guess.</span>
           </div>
           {err && <Notice tone="error">{err}</Notice>}
           <button className="btn btn-primary auth-submit" type="submit" disabled={busy}>

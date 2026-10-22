@@ -1,274 +1,167 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Camera, Check, ShieldCheck, ShieldAlert, ArrowLeft as Back, ArrowRight, Clock, IdCard, GraduationCap, User as UserIc,
-} from 'lucide-react';
+import { Camera, ShieldCheck, ShieldAlert, Clock, Loader2, GraduationCap, Briefcase } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import BottomNav from '../components/BottomNav';
+import { Notice, useToast } from '../components/Feedback';
 import { useAuth } from '../store/AuthContext';
-import { Notice } from '../components/Feedback';
+import { authApi } from '../api/client';
+import { resizeImage } from '../utils/image';
 import './pages.css';
-import './Auth.css';
-import './Sell.css';
 import './SellerVerification.css';
 
-const STEPS = ['Personal', 'Student ID', 'Government ID', 'Selfie', 'Review'];
+const STATUS = {
+  verified: { icon: ShieldCheck, title: "You're verified", text: 'Buyers see the verified badge on your shop and listings.' },
+  pending: { icon: Clock, title: 'Under review', text: 'The sBay team reviews applications within a day or two. Your shop stays open meanwhile.' },
+  rejected: { icon: ShieldAlert, title: 'Verification was not approved', text: null },
+  unverified: { icon: ShieldAlert, title: 'Not verified yet', text: 'Verified shops get a badge that buyers look for. It only takes a minute.' },
+};
 
+/**
+ * Seller verification status, and the form to apply again after a
+ * rejection. Sends exactly what the admin review uses: student ID photo
+ * and university for students, occupation for everyone else.
+ */
 export default function SellerVerification() {
   const navigate = useNavigate();
-  const { user, submitVerification } = useAuth();
-  const liveStatus = user?.verification?.status || (user?.verified ? 'verified' : 'unverified');
-  const [resubmitting, setResubmitting] = useState(false);
-  const status = resubmitting ? 'unverified' : liveStatus;
+  const toast = useToast();
+  const { user, refreshMe } = useAuth();
+  const status = user?.verification?.status || (user?.verified ? 'verified' : 'unverified');
+  const [applying, setApplying] = useState(false);
 
-  const [step, setStep] = useState(0);
-  const [form, setForm] = useState({
-    fullName: user?.name || '',
-    dob: '',
-    university: user?.university || '',
-    studentNumber: '',
-    studentIdImage: '',
-    govIdType: 'Ghana Card',
-    govIdNumber: '',
-    govIdImage: '',
-    selfieImage: '',
-  });
+  const [form, setForm] = useState(() => ({
+    isStudent: user?.verification?.isStudent ?? true,
+    university: user?.verification?.university || '',
+    occupation: user?.verification?.occupation || '',
+    businessReg: user?.verification?.businessReg || '',
+  }));
+  const [idCard, setIdCard] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-
-  const upload = (key) => (e) => {
+  const pickIdCard = async (e) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => set(key, reader.result);
-    reader.readAsDataURL(file);
+    try { setIdCard(await resizeImage(file, 1600, 0.85)); }
+    catch (ex) { setErr(ex.message); }
   };
 
-  const next = () => setStep((s) => Math.min(STEPS.length - 1, s + 1));
-  const prev = () => setStep((s) => Math.max(0, s - 1));
-
-  const stepIsValid = () => {
-    if (step === 0) return form.fullName && form.dob && form.university;
-    if (step === 1) return form.studentNumber && form.studentIdImage;
-    if (step === 2) return form.govIdNumber && form.govIdImage;
-    if (step === 3) return form.selfieImage;
-    return true;
-  };
-
-  const submit = async () => {
-    setErr(''); setBusy(true);
+  const submit = async (e) => {
+    e.preventDefault();
+    setErr('');
+    if (form.isStudent && (!form.university.trim() || !idCard)) {
+      setErr('Add your university and a photo of your student ID.');
+      return;
+    }
+    if (!form.isStudent && !form.occupation.trim()) {
+      setErr('Tell us what you do.');
+      return;
+    }
+    setBusy(true);
     try {
-      await submitVerification(form);
-    } catch (e) { setErr(e.message || 'Could not submit.'); }
-    finally { setBusy(false); }
+      await authApi.resubmitVerification({
+        isStudent: form.isStudent,
+        university: form.isStudent ? form.university.trim() : undefined,
+        occupation: form.isStudent ? undefined : form.occupation.trim(),
+        businessReg: form.isStudent ? undefined : form.businessReg.trim() || undefined,
+        idCardUrl: form.isStudent ? idCard : undefined,
+      });
+      await refreshMe();
+      setApplying(false);
+      toast.success('Sent for review');
+    } catch (ex) {
+      setErr(ex.message || 'Could not send your details. Please try again.');
+    } finally {
+      setBusy(false);
+    }
   };
 
-  // ---- Status screen (pending / verified / rejected) ----
-  if (status === 'pending' || status === 'verified' || status === 'rejected') {
-    return (
-      <div className="page">
-        <TopBar showBack showSearch={false} title="Verification" />
-        <main className="page-main">
-          <div className={`vf-status vf-${status}`}>
-            <div className="vf-status-ic">
-              {status === 'verified' && <ShieldCheck size={44} />}
-              {status === 'pending'  && <Clock size={44} />}
-              {status === 'rejected' && <ShieldAlert size={44} />}
-            </div>
-            <h2>
-              {status === 'verified' && "You're verified"}
-              {status === 'pending'  && 'Under review'}
-              {status === 'rejected' && 'Verification was rejected'}
-            </h2>
-            <p className="muted">
-              {status === 'verified' && 'Your verified badge is now visible to buyers across sBay.'}
-              {status === 'pending'  && 'We typically review submissions within 24 hours. We will notify you once it is decided.'}
-              {status === 'rejected' && (user?.verification?.reason || 'Some details did not match. You can resubmit any time.')}
-            </p>
+  const info = STATUS[status] || STATUS.unverified;
+  const Icon = info.icon;
+  const canApply = status === 'rejected' || status === 'unverified';
 
-            {status === 'verified' && (
-              <button className="btn btn-primary" onClick={() => navigate('/seller-dashboard')}>
-                Back to dashboard
-              </button>
-            )}
-            {status === 'pending' && (
-              <button className="btn btn-ghost" onClick={() => navigate('/seller-dashboard')}>
-                Back to dashboard
-              </button>
-            )}
-            {status === 'rejected' && (
-              <button
-                className="btn btn-primary"
-                onClick={() => { setStep(0); setResubmitting(true); }}
-              >
-                Resubmit
-              </button>
-            )}
-          </div>
-        </main>
-        <BottomNav />
-      </div>
-    );
-  }
-
-  // ---- Wizard ----
   return (
     <div className="page">
-      <TopBar showBack showSearch={false} title="Get verified" />
+      <TopBar showBack showSearch={false} title="Verification" />
+      <main className="page-main vf-page">
+        {!applying ? (
+          <section className={`vf-status vf-${status}`}>
+            <span className="vf-status-ic"><Icon size={40} /></span>
+            <h2>{info.title}</h2>
+            <p className="muted">
+              {info.text || user?.verification?.reason || 'Some details could not be confirmed. You can send them again.'}
+            </p>
+            {canApply ? (
+              <button className="btn btn-primary" onClick={() => setApplying(true)}>
+                {status === 'rejected' ? 'Send details again' : 'Get verified'}
+              </button>
+            ) : (
+              <button className="btn btn-ghost" onClick={() => navigate('/seller-dashboard')}>Back to dashboard</button>
+            )}
+          </section>
+        ) : (
+          <form className="card vf-form" onSubmit={submit}>
+            <h2 className="page-h2">Verification details</h2>
+            <p className="muted small">Only the sBay team sees these. They are never shown on your shop.</p>
 
-      <div className="stepper">
-        {STEPS.map((s, i) => (
-          <div key={s} className={`step ${i <= step ? 'done' : ''}`}>
-            <span className="circle">{i < step ? <Check size={14} /> : i + 1}</span>
-            <span className="lbl">{s}</span>
-          </div>
-        ))}
-      </div>
+            <div className="seg vf-choice" role="radiogroup" aria-label="Are you a student?">
+              <button type="button" role="radio" aria-checked={form.isStudent} className={form.isStudent ? 'active' : ''}
+                onClick={() => setForm((f) => ({ ...f, isStudent: true }))}>
+                <GraduationCap size={16} /> I'm a student
+              </button>
+              <button type="button" role="radio" aria-checked={!form.isStudent} className={!form.isStudent ? 'active' : ''}
+                onClick={() => setForm((f) => ({ ...f, isStudent: false }))}>
+                <Briefcase size={16} /> I'm not a student
+              </button>
+            </div>
 
-      <main className="page-main">
-        <AnimatePresence mode="wait">
-          <motion.section
-            key={step}
-            className="card"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.25 }}
-          >
-            {step === 0 && (
+            {form.isStudent ? (
               <>
-                <h3 className="page-h2"><UserIc size={16} /> Personal details</h3>
-                <p className="muted small">We use these to confirm your identity. They will not be shown publicly.</p>
-                <div className="vf-grid">
-                  <label>
-                    <span>Full legal name</span>
-                    <input value={form.fullName} onChange={(e) => set('fullName', e.target.value)} placeholder="As shown on your ID" />
-                  </label>
-                  <label>
-                    <span>Date of birth</span>
-                    <input type="date" value={form.dob} onChange={(e) => set('dob', e.target.value)} />
-                  </label>
-                  <label className="full">
-                    <span>University</span>
-                    <input value={form.university} onChange={(e) => set('university', e.target.value)} placeholder="e.g. University of Ghana" />
+                <label className="field">
+                  <span>University</span>
+                  <input value={form.university} onChange={set('university')} placeholder="e.g. University of Ghana" maxLength={120} />
+                </label>
+                <div className="field">
+                  <span>Student ID card</span>
+                  <label className={`vf-upload ${idCard ? 'has' : ''}`}>
+                    {idCard ? <img src={idCard} alt="Your student ID" /> : (
+                      <>
+                        <Camera size={24} aria-hidden="true" />
+                        <strong>Add a photo of your student ID</strong>
+                        <span className="muted small">Make sure your name and photo are readable</span>
+                      </>
+                    )}
+                    <input type="file" accept="image/*" onChange={pickIdCard} hidden />
                   </label>
                 </div>
               </>
-            )}
-
-            {step === 1 && (
+            ) : (
               <>
-                <h3 className="page-h2"><GraduationCap size={16} /> Student ID</h3>
-                <p className="muted small">Upload a clear photo of your current student ID card.</p>
-                <div className="vf-grid">
-                  <label className="full">
-                    <span>Student number</span>
-                    <input value={form.studentNumber} onChange={(e) => set('studentNumber', e.target.value)} placeholder="e.g. 10812345" />
-                  </label>
-                </div>
-                <UploadBox label="Student ID photo" value={form.studentIdImage} onChange={upload('studentIdImage')} />
+                <label className="field">
+                  <span>What do you do?</span>
+                  <input value={form.occupation} onChange={set('occupation')} placeholder="e.g. Phone accessories trader" maxLength={120} />
+                </label>
+                <label className="field">
+                  <span>Business registration number <em className="muted">optional</em></span>
+                  <input value={form.businessReg} onChange={set('businessReg')} placeholder="If your business is registered" maxLength={80} />
+                </label>
               </>
             )}
 
-            {step === 2 && (
-              <>
-                <h3 className="page-h2"><IdCard size={16} /> Government ID</h3>
-                <p className="muted small">Ghana Card or passport — both sides if applicable.</p>
-                <div className="vf-grid">
-                  <label>
-                    <span>Document type</span>
-                    <select value={form.govIdType} onChange={(e) => set('govIdType', e.target.value)}>
-                      <option>Ghana Card</option>
-                      <option>Passport</option>
-                      <option>Driver's License</option>
-                    </select>
-                  </label>
-                  <label>
-                    <span>ID number</span>
-                    <input value={form.govIdNumber} onChange={(e) => set('govIdNumber', e.target.value)} placeholder="e.g. GHA-XXXXXXXX-X" />
-                  </label>
-                </div>
-                <UploadBox label="Government ID photo" value={form.govIdImage} onChange={upload('govIdImage')} />
-              </>
-            )}
+            {err && <Notice tone="error">{err}</Notice>}
 
-            {step === 3 && (
-              <>
-                <h3 className="page-h2"><Camera size={16} /> Selfie</h3>
-                <p className="muted small">Take a well-lit selfie holding your government ID next to your face.</p>
-                <UploadBox label="Selfie with ID" value={form.selfieImage} onChange={upload('selfieImage')} />
-              </>
-            )}
-
-            {step === 4 && (
-              <>
-                <h3 className="page-h2">Review &amp; submit</h3>
-                <ul className="vf-review">
-                  <li><span>Name</span><strong>{form.fullName || '—'}</strong></li>
-                  <li><span>Date of birth</span><strong>{form.dob || '—'}</strong></li>
-                  <li><span>University</span><strong>{form.university || '—'}</strong></li>
-                  <li><span>Student number</span><strong>{form.studentNumber || '—'}</strong></li>
-                  <li><span>Government ID</span><strong>{form.govIdType} · {form.govIdNumber || '—'}</strong></li>
-                  <li><span>Student ID photo</span><strong>{form.studentIdImage ? 'Uploaded' : 'Missing'}</strong></li>
-                  <li><span>Government ID photo</span><strong>{form.govIdImage ? 'Uploaded' : 'Missing'}</strong></li>
-                  <li><span>Selfie</span><strong>{form.selfieImage ? 'Uploaded' : 'Missing'}</strong></li>
-                </ul>
-                <p className="muted small">By submitting you agree to sBay's verification policy. We'll email you as soon as it has been reviewed.</p>
-                {err && <Notice tone="error">{err}</Notice>}
-              </>
-            )}
-          </motion.section>
-        </AnimatePresence>
-
-        <div className="step-actions">
-          {step > 0 && (
-            <button className="btn btn-ghost" onClick={prev} disabled={busy}>
-              <Back size={16} /> Back
-            </button>
-          )}
-          {step < STEPS.length - 1 ? (
-            <button
-              className="btn btn-primary"
-              style={{ marginLeft: 'auto' }}
-              onClick={next}
-              disabled={!stepIsValid()}
-            >
-              Next <ArrowRight size={16} />
-            </button>
-          ) : (
-            <button
-              className="btn btn-primary"
-              style={{ marginLeft: 'auto' }}
-              onClick={submit}
-              disabled={busy || !stepIsValid()}
-            >
-              {busy ? 'Submitting…' : 'Submit for review'}
-            </button>
-          )}
-        </div>
+            <div className="vf-actions">
+              <button type="button" className="btn btn-ghost" onClick={() => setApplying(false)} disabled={busy}>Cancel</button>
+              <button type="submit" className="btn btn-primary" disabled={busy}>
+                {busy ? <><Loader2 size={16} className="spin" /> Sending…</> : 'Send for review'}
+              </button>
+            </div>
+          </form>
+        )}
       </main>
-
       <BottomNav />
     </div>
-  );
-}
-
-function UploadBox({ label, value, onChange }) {
-  return (
-    <label className={`vf-upload ${value ? 'has' : ''}`}>
-      {value ? (
-        <img src={value} alt={label} />
-      ) : (
-        <>
-          <Camera size={26} />
-          <strong>{label}</strong>
-          <span className="muted small">Tap to choose a photo</span>
-        </>
-      )}
-      <input type="file" accept="image/*" onChange={onChange} hidden />
-    </label>
   );
 }

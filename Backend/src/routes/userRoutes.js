@@ -3,9 +3,9 @@ import { body, param } from 'express-validator';
 import {
   updateMe, becomeSeller, getSellerById,
   addPaymentMethod, removePaymentMethod, myNotifications,
-  getSellerReviews, createReview, deleteMyAccount,
+  getSellerReviews, createReview, deleteMyAccount, resubmitVerification,
 } from '../controllers/userController.js';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth, requireRole } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 
 const router = Router();
@@ -46,6 +46,19 @@ router.post(
   body('idCardUrl').optional().isString().isLength({ max: 6_000_000 }),
   validate,
   becomeSeller
+);
+
+router.post(
+  '/me/verification',
+  requireAuth,
+  requireRole('seller'),
+  body('isStudent').isBoolean(),
+  body('university').optional().isString().isLength({ max: 120 }),
+  body('occupation').optional().isString().isLength({ max: 120 }),
+  body('businessReg').optional().isString().isLength({ max: 80 }),
+  body('idCardUrl').optional().isString().isLength({ max: 6_000_000 }),
+  validate,
+  resubmitVerification
 );
 
 router.post(

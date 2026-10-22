@@ -204,25 +204,6 @@
 .role-card strong { font-size: 0.95rem; font-weight: 800; }
 .role-card span:last-child { font-size: 0.8rem; color: var(--text-muted); }
 
-/* Password strength meter */
-.pw-strength { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
-.pw-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
-.pw-seg { height: 5px; border-radius: 3px; background: var(--surface-3); transition: background 0.2s; }
-.pw-checks {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px 12px;
-  font-size: 0.78rem;
-  color: var(--text-soft);
-}
-.pw-checks li { display: inline-flex; align-items: center; gap: 4px; }
-.pw-checks li.ok { color: var(--primary-dark); }
-.field > .field-note, .field-note { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; font-size: 0.8rem; font-weight: 600; }
-.field-note.ok { color: var(--primary-dark); }
-.field-note.bad { color: var(--error); }
 
 .auth-done { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; }
 .auth-done-ic { color: var(--primary); margin-bottom: 6px; }

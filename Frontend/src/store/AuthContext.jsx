@@ -98,11 +98,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  /**
-   * Verification is now an ADMIN-driven flow. `becomeSeller` already
-   * queues the application; we expose this helper for legacy pages
-   * that still need to refresh status after a manual change.
-   */
+  /** Reload the signed-in user, e.g. after a payment or verification change. */
   const refreshMe = async () => {
     if (!getToken()) return null;
     const fresh = await authApi.me();
@@ -110,12 +106,7 @@ export function AuthProvider({ children }) {
     return fresh;
   };
 
-  /**
-   * Password reset — backend endpoints are not yet implemented. We
-   * keep the legacy in-memory ticket so the existing /forgot-password
-   * flow still works end-to-end in development. Wire to real endpoints
-   * when they land.
-   */
+  /** Email a reset link (the API answers the same whether or not the account exists). */
   const requestPasswordReset = async (email) => {
     if (!email) throw new Error('Enter your email.');
     return authApi.requestPasswordReset(email);
@@ -127,17 +118,11 @@ export function AuthProvider({ children }) {
     return authApi.resetPassword({ email, token, newPassword });
   };
 
-  /** Kept for legacy callers — verification is now created by
-   *  `upgradeToSeller` and reviewed by an admin. This function only
-   *  refreshes local state. */
-  const submitVerification = async () => refreshMe();
-
   return (
     <AuthContext.Provider value={{
       user, booting,
       login, signup, logout, googleLogin,
       upgradeToSeller, updateUser, refreshMe,
-      submitVerification,
       requestPasswordReset, resetPassword,
     }}>
       {children}

@@ -182,7 +182,7 @@ export default function Home() {
 
             {local.popular.length > 2 && (
               <section className="section">
-                <SectionHead title={<>Popular at {campus.label}</>} sub="Most viewed on your campus this week" />
+                <SectionHead title={<>Popular at {campus.label}</>} sub="Most viewed on your campus" />
                 <ProductRail label={`Popular at ${campus.label}`}>
                   {local.popular.map((p, i) => <ProductCard key={p.id} p={p} rank={i + 1} variant="rail" />)}
                 </ProductRail>
@@ -239,7 +239,7 @@ export default function Home() {
             <section className="section">
               <SectionHead
                 title="Trending across Ghana"
-                sub="Most viewed this week"
+                sub="The listings people are looking at most"
                 action={{ label: 'View all', onClick: () => navigate('/trending') }}
               />
               {feedLoading ? <SkeletonGrid count={5} /> : feed.trending.length === 0 ? (
@@ -295,10 +295,12 @@ export default function Home() {
           </ol>
           <div className="how-cta">
             <div>
-              <strong>Have something to sell?</strong>
+              <strong>{user?.role === 'seller' ? 'Got something new to sell?' : 'Have something to sell?'}</strong>
               <p>List it in a minute and reach buyers{campus ? ` at ${campus.label}` : ' on your campus'}.</p>
             </div>
-            <button className="btn btn-secondary" onClick={goSell}><Plus size={16} /> Start selling</button>
+            <button className="btn btn-secondary" onClick={goSell}>
+              <Plus size={16} /> {user?.role === 'seller' ? 'List an item' : 'Start selling'}
+            </button>
           </div>
         </section>
       </main>

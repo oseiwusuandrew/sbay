@@ -1,7 +1,10 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
-import { quotePayment, initializePayment, verifyPayment, paystackWebhook, initializeOnboardingFee, verifyOnboardingFee } from '../controllers/paymentController.js';
-import { requireAuth } from '../middleware/auth.js';
+import {
+  quotePayment, initializePayment, verifyPayment, paystackWebhook,
+  initializeOnboardingFee, verifyOnboardingFee, initializePlanPayment, verifyPlanPayment,
+} from '../controllers/paymentController.js';
+import { requireAuth, requireRole } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { authLimiter } from '../middleware/rateLimit.js';
 
@@ -46,6 +49,22 @@ router.post(
   body('reference').isString().notEmpty().withMessage('Reference is required'),
   validate,
   verifyOnboardingFee
+);
+
+router.post(
+  '/subscription/initialize',
+  requireAuth,
+  requireRole('seller'),
+  body('plan').isString().trim().notEmpty().withMessage('Choose a plan'),
+  validate,
+  initializePlanPayment
+);
+router.post(
+  '/subscription/verify',
+  requireAuth,
+  body('reference').isString().notEmpty().withMessage('Reference is required'),
+  validate,
+  verifyPlanPayment
 );
 
 export default router;

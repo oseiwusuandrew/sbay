@@ -11,13 +11,12 @@ import RequireAuth from './components/RequireAuth';
 import ScrollToTop from './components/ScrollToTop';
 import FloatingCart from './components/FloatingCart';
 import DesktopNav from './components/DesktopNav';
-import SupportWidget from './components/SupportWidget';
+import RouteTitle from './components/RouteTitle';
 import NetworkBanner from './components/NetworkBanner';
 import InstallPrompt from './components/InstallPrompt';
 import { registerServiceWorker, setupInstallPrompt } from './utils/pwa';
 
 // Lazy-load all pages for code splitting — only the active route's JS loads
-const Splash          = lazy(() => import('./pages/Splash'));
 const Home            = lazy(() => import('./pages/Home'));
 const SearchPage      = lazy(() => import('./pages/Search'));
 const ProductDetail   = lazy(() => import('./pages/ProductDetail'));
@@ -42,6 +41,8 @@ const SellerDashboard    = lazy(() => import('./pages/SellerDashboard'));
 const SellerListings    = lazy(() => import('./pages/SellerListings'));
 const SellerSales       = lazy(() => import('./pages/SellerSales'));
 const Terms             = lazy(() => import('./pages/Terms'));
+const Privacy           = lazy(() => import('./pages/Privacy'));
+const Help              = lazy(() => import('./pages/Help'));
 const SellerSubscription = lazy(() => import('./pages/SellerSubscription'));
 const SellerSettings  = lazy(() => import('./pages/SellerSettings'));
 const SellerVerification = lazy(() => import('./pages/SellerVerification'));
@@ -96,15 +97,15 @@ export default function App() {
             <BrowserRouter>
               <ToastProvider>
               <ScrollToTop />
+              <RouteTitle />
               <DesktopNav />
               <NetworkBanner />
               <FloatingCart />
-              <SupportWidget />
               <InstallPrompt />
               <Suspense fallback={<PageLoader />}>
               <Routes>
                 {/* Public — anyone can browse */}
-                <Route path="/"             element={<Splash />} />
+                <Route path="/"             element={<Navigate to="/home" replace />} />
                 <Route path="/home"         element={<Home />} />
                 <Route path="/search"       element={<SearchPage />} />
                 <Route path="/product/:id"  element={<ProductDetail />} />
@@ -147,6 +148,8 @@ export default function App() {
                 <Route path="/seller-dashboard/purchases" element={<Navigate to="/profile/orders" replace />} />
                 <Route path="/seller-dashboard/messages"  element={<Navigate to="/chats" replace />} />
                 <Route path="/terms"                       element={<Terms />} />
+                <Route path="/privacy"                     element={<Privacy />} />
+                <Route path="/help"                        element={<Help />} />
                 <Route path="/seller/subscription" element={<RequireAuth role="seller"><SellerSubscription /></RequireAuth>} />
                 <Route path="/seller/settings"     element={<RequireAuth role="seller"><SellerSettings /></RequireAuth>} />
                 <Route path="/seller/verification" element={<RequireAuth role="seller"><SellerVerification /></RequireAuth>} />

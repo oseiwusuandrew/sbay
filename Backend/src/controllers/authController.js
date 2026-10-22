@@ -7,6 +7,8 @@ import { env } from '../config/env.js';
 import { sendPasswordResetEmail, sendWelcomeEmail } from '../utils/email.js';
 import crypto from 'crypto';
 import validator from 'validator';
+import { assertPassword } from '../utils/password.js';
+import { normalizePhone } from '../utils/phone.js';
 
 function hashResetToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -27,13 +29,14 @@ export const register = asyncHandler(async (req, res) => {
 
   const existing = await User.findOne({ email: email.toLowerCase() });
   if (existing) throw new HttpError(409, 'An account with this email already exists');
+  assertPassword(password, { email, name });
 
   const passwordHash = await User.hashPassword(password);
   const user = await User.create({
     name: name.trim(),
     email: email.toLowerCase().trim(),
     passwordHash,
-    phone: phone?.trim(),
+    phone: normalizePhone(phone),
     location: location?.trim(),
     role: 'buyer',
   });
@@ -83,6 +86,8 @@ export const changePassword = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id).select('+passwordHash');
   const ok = await user.checkPassword(currentPassword);
   if (!ok) throw new HttpError(400, 'Current password is incorrect');
+  assertPassword(newPassword, user);
+  if (await user.checkPassword(newPassword)) throw new HttpError(400, 'Choose a password you are not already using.');
   user.passwordHash = await User.hashPassword(newPassword);
   await user.save();
   res.json({ ok: true });
@@ -121,6 +126,7 @@ export const resetPasswordWithToken = asyncHandler(async (req, res) => {
   if (hashResetToken(token) !== user.resetPasswordTokenHash) {
     throw new HttpError(400, 'Reset link is invalid or expired.');
   }
+  assertPassword(newPassword, user);
 
   user.passwordHash = await User.hashPassword(newPassword);
   user.resetPasswordTokenHash = undefined;

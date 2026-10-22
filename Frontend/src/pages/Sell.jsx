@@ -174,7 +174,7 @@ export default function Sell() {
     setGateErr('');
     try {
       const { authorization_url: url } = await paymentApi.initializeOnboarding();
-      window.location.href = url;
+      window.location.assign(url);
     } catch (err) {
       setGateErr(err.message || 'Could not start the payment. Please try again.');
       setGateBusy(false);
@@ -306,7 +306,7 @@ export default function Sell() {
                   </label>
                   <div className="field">
                     <span id="cond-label">Condition</span>
-                    <div className="sell-seg" role="radiogroup" aria-labelledby="cond-label">
+                    <div className="seg sell-cond" role="radiogroup" aria-labelledby="cond-label">
                       {CONDITIONS.map((c) => (
                         <button
                           key={c}

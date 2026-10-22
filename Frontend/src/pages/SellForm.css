@@ -75,30 +75,8 @@
 .sell-photo-x { right: 6px; }
 .sell-photo-star { left: 6px; }
 
-/* ---------- Condition picker ---------- */
-.sell-seg {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-}
-@media (min-width: 641px) { .sell-seg { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.sell-seg button {
-  min-height: 46px;
-  padding: 6px 8px;
-  border-radius: var(--r-md);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-muted);
-  font-size: 0.82rem;
-  font-weight: 600;
-  line-height: 1.2;
-}
-.sell-seg button:hover { border-color: var(--border-strong); color: var(--text); }
-.sell-seg button.active {
-  border-color: var(--primary);
-  background: var(--primary-50);
-  color: var(--primary-ink);
-}
+/* ---------- Condition picker (uses the shared .seg control) ---------- */
+@media (min-width: 641px) { .sell-cond { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 
 /* ---------- Input with a leading icon ---------- */
 .sell-input-ic { position: relative; }

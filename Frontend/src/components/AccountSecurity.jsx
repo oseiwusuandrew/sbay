@@ -16,7 +16,7 @@ export default function AccountSecurity() {
   const navigate = useNavigate();
   const confirm = useConfirm();
   const { user, logout } = useAuth();
-  const [pw, setPw] = useState({ current: '', next: '', confirm: '' });
+  const [pw, setPw] = useState({ current: '', next: '' });
   const [pwBusy, setPwBusy] = useState(false);
   const [pwMsg, setPwMsg] = useState(null);
   const [delErr, setDelErr] = useState('');
@@ -28,11 +28,10 @@ export default function AccountSecurity() {
     setPwMsg(null);
     if (!pw.current) return setPwMsg({ ok: false, text: 'Enter your current password.' });
     if (pw.next.length < 8) return setPwMsg({ ok: false, text: 'Your new password needs at least 8 characters.' });
-    if (pw.next !== pw.confirm) return setPwMsg({ ok: false, text: "The new passwords don't match." });
     setPwBusy(true);
     try {
       await authApi.changePassword({ currentPassword: pw.current, newPassword: pw.next });
-      setPw({ current: '', next: '', confirm: '' });
+      setPw({ current: '', next: '' });
       setPwMsg({ ok: true, text: 'Password updated.' });
     } catch (err) {
       setPwMsg({ ok: false, text: err.message || "We couldn't update your password." });
@@ -82,11 +81,7 @@ export default function AccountSecurity() {
             </label>
             <label className="field">
               <span>New password</span>
-              <input type="password" autoComplete="new-password" value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} placeholder="At least 8 characters" />
-            </label>
-            <label className="field">
-              <span>Confirm new password</span>
-              <input type="password" autoComplete="new-password" value={pw.confirm} onChange={(e) => setPw({ ...pw, confirm: e.target.value })} />
+              <input type="password" autoComplete="new-password" value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} placeholder="At least 8 characters" minLength={8} maxLength={128} />
             </label>
             {pwMsg && <Notice tone={pwMsg.ok ? 'success' : 'error'} style={{ marginTop: 12 }}>{pwMsg.text}</Notice>}
             <button className="btn btn-primary" type="submit" style={{ marginTop: 14 }} disabled={pwBusy}>
@@ -102,7 +97,7 @@ export default function AccountSecurity() {
           <button className="btn btn-ghost" onClick={onLogout}><LogOut size={16} /> Sign out</button>
           <button className="btn btn-danger" onClick={onDelete}><Trash2 size={16} /> Delete account</button>
         </div>
-        {delErr && <p className="field-error" role="alert" style={{ marginTop: 10 }}>{delErr}</p>}
+        {delErr && <Notice tone="error" style={{ marginTop: 10 }}>{delErr}</Notice>}
       </section>
     </>
   );

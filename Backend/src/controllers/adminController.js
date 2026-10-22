@@ -536,9 +536,11 @@ export const listAllPlans = asyncHandler(async (_req, res) => {
 
 export const upsertPlan = asyncHandler(async (req, res) => {
   const { code, name, tag, price, feePct, features, highlight, active, sortOrder } = req.body;
+  // Empty / 0 means no limit.
+  const maxListings = Number(req.body.maxListings) > 0 ? Math.floor(Number(req.body.maxListings)) : null;
   const plan = await Plan.findOneAndUpdate(
     { code: code.toLowerCase() },
-    { code: code.toLowerCase(), name, tag, price, feePct, features, highlight, active, sortOrder },
+    { code: code.toLowerCase(), name, tag, price, feePct, maxListings, features, highlight, active, sortOrder },
     { upsert: true, new: true, setDefaultsOnInsert: true, runValidators: true }
   );
   audit(req, 'plan.upsert', { kind: 'plan', id: plan._id }, { code, price, feePct });

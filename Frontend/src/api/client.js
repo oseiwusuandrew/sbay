@@ -425,6 +425,11 @@ export const authApi = {
     const { data } = await api.post('/auth/change-password', payload);
     return data;
   },
+  /** Send seller verification details again after a rejection. */
+  async resubmitVerification(payload) {
+    const { data } = await api.post('/users/me/verification', payload);
+    return adaptUser(data.user);
+  },
   async requestPasswordReset(email) {
     const { data } = await api.post('/auth/forgot-password', { email });
     return data;
@@ -485,6 +490,15 @@ export const paymentApi = {
   },
   async verifyOnboarding(reference) {
     const { data } = await api.post('/payments/onboarding/verify', { reference });
+    return data;
+  },
+  /** Pay for 30 days of a seller plan; resolves to the Paystack checkout URL. */
+  async initializePlan(plan) {
+    const { data } = await api.post('/payments/subscription/initialize', { plan });
+    return data;
+  },
+  async verifyPlan(reference) {
+    const { data } = await api.post('/payments/subscription/verify', { reference });
     return data;
   },
 };

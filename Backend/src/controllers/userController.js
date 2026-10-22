@@ -8,6 +8,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { emitToAdmins } from '../socket.js';
 import { invalidateCatalogCache } from './productController.js';
 import { normalizeImage } from '../utils/media.js';
+import { normalizePhone } from '../utils/phone.js';
 
 /** Update the current user's own profile. Role and restriction flags
  *  are NEVER editable here — those are admin-only. */
@@ -19,6 +20,7 @@ export const updateMe = asyncHandler(async (req, res) => {
   }
   // Avatars are stored as images, not embedded in the user document.
   if (patch.avatar !== undefined) patch.avatar = await normalizeImage(patch.avatar, req.user._id);
+  if (patch.phone !== undefined) patch.phone = normalizePhone(patch.phone);
 
   if (req.user.role === 'seller') {
     if (req.body.sellerProfile) {
@@ -55,26 +57,48 @@ export const updateMe = asyncHandler(async (req, res) => {
  * `pending`. Buyers see a "pending review" badge on the seller's
  * profile until an admin verifies them.
  */
+/**
+ * The verification record an application creates. Students attach a photo
+ * of their student ID; it stays inline on the user (private to admins)
+ * rather than in the public image store.
+ */
+function pendingVerification({ isStudent, university, occupation, businessReg, idCardUrl }) {
+  if (isStudent && !university?.trim()) throw new HttpError(400, 'Enter your university.');
+  if (isStudent && !idCardUrl) throw new HttpError(400, 'Please attach a clear photo of your student ID.');
+  if (!isStudent && !occupation?.trim()) throw new HttpError(400, 'Tell us what you do.');
+  // ~3 MB of image as a data URL, so the user document stays reasonable.
+  if (idCardUrl && (typeof idCardUrl !== 'string' || !idCardUrl.startsWith('data:image/') || idCardUrl.length > 4_400_000)) {
+    throw new HttpError(413, 'Student ID image is too large or not an image. Please upload a smaller photo.');
+  }
+  return {
+    status: 'pending',
+    submittedAt: new Date(),
+    isStudent: !!isStudent,
+    university: isStudent ? university.trim() : undefined,
+    occupation: isStudent ? undefined : occupation.trim(),
+    businessReg: isStudent ? undefined : businessReg?.trim() || undefined,
+    idCardUrl: isStudent ? idCardUrl : undefined,
+    idCardUploadedAt: isStudent ? new Date() : undefined,
+  };
+}
+
+function announceApplication(user, again = false) {
+  emitToAdmins('verification:new', {
+    userId: user._id.toString(),
+    name: user.name,
+    storeName: user.sellerProfile?.storeName,
+    isStudent: !!user.verification?.isStudent,
+    message: `${user.name || user.email} ${again ? 'resubmitted' : 'submitted'} a seller application`
+      + `${user.verification?.isStudent ? ' with student ID' : ''}.`,
+  });
+}
+
 export const becomeSeller = asyncHandler(async (req, res) => {
-  const {
-    storeName, bio, isStudent, university, occupation, businessReg, location, payout,
-    idCardUrl, // base64 data URL — accepted for v1; replace with S3 in prod
-  } = req.body;
+  const { storeName, bio, location, payout } = req.body;
 
   const user = await User.findById(req.user._id);
   if (user.role === 'admin') throw new HttpError(400, 'Admins cannot also be sellers');
-
-  // If the seller claims student status, the ID card is mandatory so
-  // the verification queue is meaningful. Reject early instead of
-  // creating an un-actionable application row.
-  if (isStudent && !idCardUrl) {
-    throw new HttpError(400, 'Please attach a clear photo of your student ID.');
-  }
-  // Cap the inline image size to ~3 MB worth of base64 (≈ 4 MB of data URL)
-  // so abusers can't blow up the user document.
-  if (idCardUrl && typeof idCardUrl === 'string' && idCardUrl.length > 4_400_000) {
-    throw new HttpError(413, 'Student ID image is too large. Please upload a smaller photo.');
-  }
+  const verification = pendingVerification(req.body);
 
   user.role = 'seller';
   user.sellerProfile = {
@@ -93,28 +117,27 @@ export const becomeSeller = asyncHandler(async (req, res) => {
     network: payout?.network?.trim(),
     updatedAt: new Date(),
   };
-  user.verification = {
-    status: 'pending',
-    submittedAt: new Date(),
-    isStudent: !!isStudent,
-    university: university?.trim(),
-    occupation: occupation?.trim(),
-    businessReg: businessReg?.trim(),
-    idCardUrl: isStudent ? idCardUrl : undefined,
-    idCardUploadedAt: isStudent && idCardUrl ? new Date() : undefined,
-  };
+  user.verification = verification;
   user.verified = false;
   await user.save();
+  announceApplication(user);
 
-  // Notify all admins in real time so the verification queue refreshes.
-  emitToAdmins('verification:new', {
-    userId: user._id.toString(),
-    name: user.name,
-    storeName: user.sellerProfile?.storeName,
-    isStudent: !!isStudent,
-    message: `${user.name || user.email} submitted a seller application${isStudent ? ' with student ID' : ''}.`,
-  });
+  res.json({ user });
+});
 
+/**
+ * POST /users/me/verification — a seller who was rejected (or never
+ * verified) sends their details again for review.
+ */
+export const resubmitVerification = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id);
+  const status = user.verification?.status;
+  if (status === 'pending') throw new HttpError(409, 'Your application is already being reviewed.');
+  if (status === 'verified') throw new HttpError(409, 'Your shop is already verified.');
+  user.verification = pendingVerification(req.body);
+  user.verified = false;
+  await user.save();
+  announceApplication(user, true);
   res.json({ user });
 });
 
@@ -396,6 +419,11 @@ export const deleteMyAccount = asyncHandler(async (req, res) => {
   user.restrictReason = 'Self-deleted';
   user.restrictedAt = new Date();
   user.paymentMethods = [];
+  // The student ID photo is personal data; it goes with the account.
+  if (user.verification) {
+    user.verification.idCardUrl = undefined;
+    user.verification.idCardUploadedAt = undefined;
+  }
   if (user.sellerProfile) {
     user.sellerProfile.storeName = 'Deleted Store';
     user.sellerProfile.bio = '';

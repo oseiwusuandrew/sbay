@@ -1,20 +1,24 @@
 import mongoose from 'mongoose';
 
 /**
- * Subscription plan for sellers.
+ * Seller plan. Editable from the admin panel; nothing about pricing is
+ * hard-coded in the app.
  *
- * Editable from the admin panel — both `price` (GH₵/month) and
- * `feePct` (the platform's escrow service fee for sellers on this
- * plan) flow from here to the frontend. Nothing about pricing is
- * hardcoded in the React code.
+ *  - price:       GH₵ for 30 days, paid through Paystack (0 = free plan)
+ *  - feePct:      service fee buyers pay on top of this seller's prices
+ *  - maxListings: how many active listings the seller may have (null = no limit)
+ *  - features:    extra lines shown on the plan card. Only list what the
+ *                 platform actually does; the listing limit and fee are
+ *                 shown automatically.
  */
 const planSchema = new mongoose.Schema(
   {
     code:     { type: String, required: true, unique: true, lowercase: true, trim: true }, // 'free' | 'plus' | 'pro' | ...
     name:     { type: String, required: true, trim: true },
     tag:      { type: String, default: '' },
-    price:    { type: Number, required: true, min: 0 },     // GH₵ / month
+    price:    { type: Number, required: true, min: 0 },
     feePct:   { type: Number, required: true, min: 0, max: 100, default: 5 },
+    maxListings: { type: Number, min: 1, default: null },
     features: { type: [String], default: [] },
     highlight:{ type: Boolean, default: false },
     active:   { type: Boolean, default: true },
