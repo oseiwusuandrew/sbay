@@ -4,6 +4,7 @@ import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import AuthLayout from '../components/AuthLayout';
 import OAuthButtons from '../components/OAuthButtons';
 import { useAuth } from '../store/AuthContext';
+import { Notice } from '../components/Feedback';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -81,7 +82,7 @@ export default function Login() {
           <Link to="/forgot-password">Forgot password?</Link>
         </div>
 
-        {err && <div className="auth-error" role="alert">{err}</div>}
+        {err && <Notice tone="error">{err}</Notice>}
 
         <button className="btn btn-primary auth-submit" type="submit" disabled={busy}>
           {busy ? <><Loader2 size={18} className="spin" /> Signing in…</> : 'Sign in'}

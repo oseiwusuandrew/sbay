@@ -183,35 +183,15 @@ body.support-open {
 /* --- Input bar --- */
 
 /* --- Form feedback --- */
-.support-error {
-  background: #fde6e6;
-  color: #b3372c;
-  border-radius: 8px;
-  padding: 9px 12px;
-  font-size: 13px;
-  font-weight: 600;
-  margin: 0;
-}
-.support-success {
-  background: #e6f4ec;
-  color: #0a7e3e;
-  border-radius: 8px;
-  padding: 9px 12px;
-  font-size: 13px;
-  font-weight: 600;
-  margin: 0;
-}
 .support-field-err {
-  color: #b3372c;
+  color: var(--error);
   font-size: 11px;
   font-weight: 600;
   margin-top: -2px;
 }
-.support-input-wrap.has-err {
-  border-color: #e07070;
-}
+.support-input-wrap.has-err,
 .support-form textarea.has-err {
-  border-color: #e07070;
+  border-color: var(--error);
 }
 .support-guest-note {
   background: #f0f8f4;

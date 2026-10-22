@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { adminApi } from '../api/client';
 import { ShieldCheck, ShieldOff, UserPlus, Mail } from 'lucide-react';
 import { useAdminConfirm } from './AdminConfirmContext';
+import { Notice, useToast } from '../components/Feedback';
 
 /**
  * Admin team management. The currently signed-in admin is always
@@ -13,7 +14,8 @@ import { useAdminConfirm } from './AdminConfirmContext';
  * Remove: revoke admin access (revert to their previous role).
  */
 export default function AdminAdmins() {
-  const { confirm, alert } = useAdminConfirm();
+  const { confirm } = useAdminConfirm();
+  const toast = useToast();
   const [admins, setAdmins] = useState([]);
   const [busy, setBusy]     = useState(false);
   const [err, setErr]       = useState('');
@@ -51,14 +53,14 @@ export default function AdminAdmins() {
 
   const remove = async (a) => {
     if (a.email === meEmail) {
-      await alert('You cannot remove your own admin access from this surface.');
+      toast.warning('You cannot remove your own admin access from this surface.');
       return;
     }
     if (!(await confirm(`Revoke admin access for ${a.email}?`))) return;
     try {
       await adminApi.delete(`/admins/${a._id}`);
       load();
-    } catch (e) { await alert(e.message || 'Could not remove admin.'); }
+    } catch (e) { toast.error(e.message || 'Could not remove admin.'); }
   };
 
   return (
@@ -84,7 +86,7 @@ export default function AdminAdmins() {
             <UserPlus size={14} /> {adding ? 'Adding…' : 'Make admin'}
           </button>
         </form>
-        {err && <p className="muted" style={{ color: '#a4302a' }}>{err}</p>}
+        {err && <Notice tone="error">{err}</Notice>}
       </div>
 
       <div className="admin-card">

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { adminApi } from '../api/client';
 import { IdCard, Check, X as XIcon, Eye, Search } from 'lucide-react';
 import { useAdminConfirm } from './AdminConfirmContext';
+import { Notice, useToast } from '../components/Feedback';
 
 /**
  * Student-ID verification queue.
@@ -12,7 +13,8 @@ import { useAdminConfirm } from './AdminConfirmContext';
  * `verified` flag on the user document.
  */
 export default function AdminStudentVerification() {
-  const { prompt, alert } = useAdminConfirm();
+  const { prompt } = useAdminConfirm();
+  const toast = useToast();
   const [items, setItems] = useState([]);
   const [busy, setBusy]   = useState(false);
   const [err, setErr]     = useState('');
@@ -45,7 +47,7 @@ export default function AdminStudentVerification() {
     try {
       await adminApi.post(`/verification/students/${id}/decide`, { decision, reason });
       load();
-    } catch (e) { await alert(e.message || 'Could not update verification.'); }
+    } catch (e) { toast.error(e.message || 'Could not update verification.'); }
   };
 
   const isNew = (date) => date && Date.now() - new Date(date).getTime() < 24 * 3600 * 1000;
@@ -71,7 +73,7 @@ export default function AdminStudentVerification() {
           <button className="btn btn-primary" disabled={busy}>{busy ? 'Loading…' : 'Refresh'}</button>
         </form>
 
-        {err && <p className="muted small" style={{ color: '#a4302a' }}>{err}</p>}
+        {err && <Notice tone="error">{err}</Notice>}
 
         <table className="admin-table">
           <thead>

@@ -6,6 +6,7 @@ import BottomNav from '../components/BottomNav';
 import Footer from '../components/Footer';
 import Avatar from '../components/Avatar';
 import AccountSecurity from '../components/AccountSecurity';
+import { Notice } from '../components/Feedback';
 import { useAuth } from '../store/AuthContext';
 import { resizeImage } from '../utils/image';
 import './pages.css';
@@ -86,7 +87,7 @@ export default function ProfileSettings() {
               <input type="text" value={form.location} onChange={(e) => set('location', e.target.value)} placeholder="e.g. Greater Accra, East Legon" />
               <span className="field-hint">Used to pre-fill checkout.</span>
             </label>
-            {msg && <div className={msg.ok ? 'auth-hint' : 'auth-error'} role={msg.ok ? 'status' : 'alert'} style={{ marginTop: 12 }}>{msg.text}</div>}
+            {msg && <Notice tone={msg.ok ? 'success' : 'error'} style={{ marginTop: 12 }}>{msg.text}</Notice>}
             <button className="btn btn-primary" type="submit" style={{ marginTop: 14 }} disabled={busy}>
               {busy ? <Loader2 size={16} className="spin" /> : <Check size={16} />} Save changes
             </button>

@@ -102,4 +102,4 @@
 }
 .vf-verified .vf-status-ic { background: var(--primary-50); color: var(--primary); }
 .vf-pending  .vf-status-ic { background: #fff4dd; color: #b07700; }
-.vf-rejected .vf-status-ic { background: #fde6e6; color: var(--error); }
+.vf-rejected .vf-status-ic { background: var(--error-50); color: var(--error); }

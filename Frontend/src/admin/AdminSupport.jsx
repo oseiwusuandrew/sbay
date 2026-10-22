@@ -3,6 +3,7 @@ import { adminApi } from '../api/client';
 import { LifeBuoy, Mail, Phone, Search, Send, User } from 'lucide-react';
 import { useSocket } from '../hooks/useSocket';
 import { useAdminConfirm } from './AdminConfirmContext';
+import { useToast } from '../components/Feedback';
 
 /**
  * Customer-support inbox.
@@ -13,7 +14,8 @@ import { useAdminConfirm } from './AdminConfirmContext';
  * yet available.
  */
 export default function AdminSupport() {
-  const { confirm, alert } = useAdminConfirm();
+  const { confirm } = useAdminConfirm();
+  const toast = useToast();
   const [tickets, setTickets] = useState([]);
   const [active, setActive]   = useState(null);
   const [reply, setReply]     = useState('');
@@ -57,7 +59,7 @@ export default function AdminSupport() {
       await adminApi.post(`/support/tickets/${active._id}/reply`, { body: reply.trim() });
       setReply('');
       load();
-    } catch (e) { await alert(e.message || 'Could not send reply.'); }
+    } catch (e) { toast.error(e.message || 'Could not send reply.'); }
   };
 
   const close = async (t) => {
@@ -65,7 +67,7 @@ export default function AdminSupport() {
     try {
       await adminApi.post(`/support/tickets/${t._id}/close`);
       load();
-    } catch (e) { await alert(e.message || 'Could not close ticket.'); }
+    } catch (e) { toast.error(e.message || 'Could not close ticket.'); }
   };
 
   return (

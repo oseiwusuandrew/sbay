@@ -6,6 +6,7 @@ import {
   Package, ShoppingBag, MessageSquare, BarChart3, IdCard, User as UserIcon,
 } from 'lucide-react';
 import { useAdminConfirm } from './AdminConfirmContext';
+import { Notice, useToast } from '../components/Feedback';
 
 const PAYOUT_LABEL = {
   'mtn-momo': 'MTN MoMo',
@@ -26,7 +27,8 @@ const PAYOUT_LABEL = {
 export default function AdminUserDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { confirm, prompt, alert } = useAdminConfirm();
+  const { confirm, prompt } = useAdminConfirm();
+  const toast = useToast();
 
   const [user, setUser]         = useState(null);
   const [listings, setListings] = useState([]);
@@ -88,7 +90,7 @@ export default function AdminUserDetail() {
   }, [listings, sales, buys]);
 
   if (busy && !user) return <p className="muted">Loading user…</p>;
-  if (err && !user)  return <p className="muted" style={{ color: '#a4302a' }}>{err}</p>;
+  if (err && !user)  return <Notice tone="error">{err}</Notice>;
   if (!user)         return <p className="muted">User not found.</p>;
 
   const isSelf = user.email === meEmail;
@@ -104,7 +106,7 @@ export default function AdminUserDetail() {
     try {
       await adminApi.post(`/users/${user._id}/verify`, { decision, reason });
       load();
-    } catch (e) { await alert(e.message || 'Could not update verification.'); }
+    } catch (e) { toast.error(e.message || 'Could not update verification.'); }
   };
 
   const restrict = async () => {
@@ -118,7 +120,7 @@ export default function AdminUserDetail() {
         await adminApi.post(`/users/${user._id}/restrict`, { restricted: true, reason });
       }
       load();
-    } catch (e) { await alert(e.message || 'Could not change restriction.'); }
+    } catch (e) { toast.error(e.message || 'Could not change restriction.'); }
   };
 
   const remove = async () => {
@@ -126,7 +128,7 @@ export default function AdminUserDetail() {
     try {
       await adminApi.delete(`/users/${user._id}`);
       navigate('/admin/users', { replace: true });
-    } catch (e) { await alert(e.message || 'Could not delete user.'); }
+    } catch (e) { toast.error(e.message || 'Could not delete user.'); }
   };
 
   const fmtMoney = (n) => `GH₵ ${Math.round(Number(n || 0)).toLocaleString()}`;

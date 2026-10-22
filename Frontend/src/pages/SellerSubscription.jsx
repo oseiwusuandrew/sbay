@@ -6,6 +6,7 @@ import BottomNav from '../components/BottomNav';
 import { useAuth } from '../store/AuthContext';
 import { useConfirm } from '../store/ConfirmContext';
 import { sbay, api } from '../api/client';
+import { Notice } from '../components/Feedback';
 import './pages.css';
 import './Auth.css';
 import './ProductDetail.css';
@@ -257,7 +258,7 @@ export default function SellerSubscription() {
                 ))}
               </div>
 
-              {err && <div className="auth-error">{err}</div>}
+              {err && <Notice tone="error">{err}</Notice>}
 
               <div className="sub-actions">
                 <button className="btn btn-ghost" onClick={closeCheckout} disabled={busy}>

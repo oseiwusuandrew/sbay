@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { adminApi } from '../api/client';
 import { Lock, Eye } from 'lucide-react';
 import { useAdminConfirm } from './AdminConfirmContext';
+import { Notice } from '../components/Feedback';
 
 /**
  * Read-only chat moderation. Admins can list every conversation and
@@ -50,7 +51,7 @@ export default function AdminChats() {
           </select>
         </div>
 
-        {err && <p className="muted" style={{ color: '#a4302a' }}>{err}</p>}
+        {err && <Notice tone="error">{err}</Notice>}
 
         <table className="admin-table">
           <thead><tr><th>Buyer</th><th>Seller</th><th>Last message</th><th>State</th><th></th></tr></thead>

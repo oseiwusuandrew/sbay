@@ -6,6 +6,7 @@ import {
   Search, Banknote, Undo2, X, Package, User, Store, MapPin,
   Calendar, Hash, ArrowRight, ClipboardList,
 } from 'lucide-react';
+import { Notice } from '../components/Feedback';
 
 /**
  * Orders + escrow management.
@@ -124,7 +125,7 @@ export default function AdminOrders() {
           <button className="btn btn-primary" disabled={busy}>{busy ? 'Loading…' : 'Apply'}</button>
         </form>
 
-        {err && <p className="muted" style={{ color: '#a4302a' }}>{err}</p>}
+        {err && <Notice tone="error">{err}</Notice>}
 
         <table className="admin-table">
           <thead>
@@ -375,11 +376,8 @@ export default function AdminOrders() {
                   <Banknote size={16} /> Release to Seller
                 </button>
                 <button
-                  className="btn btn-ghost"
-                  style={{
-                    flex: 1, minWidth: 140, justifyContent: 'center',
-                    borderColor: '#f4cdcd', color: '#b3372c',
-                  }}
+                  className="btn btn-danger"
+                  style={{ flex: 1, minWidth: 140, justifyContent: 'center' }}
                   onClick={() => refund(detail._id)}
                 >
                   <Undo2 size={16} /> Refund Buyer

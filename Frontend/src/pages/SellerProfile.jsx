@@ -10,6 +10,7 @@ import ProductCard, { ProductGrid } from '../components/ProductCard';
 import Avatar from '../components/Avatar';
 import BottomNav from '../components/BottomNav';
 import Footer from '../components/Footer';
+import { Notice } from '../components/Feedback';
 import './pages.css';
 import './SellerProfile.css';
 
@@ -229,7 +230,7 @@ export default function SellerProfile() {
           </div>
 
           {reviewMsg && (
-            <div className={`notice ${reviewMsg.ok ? 'notice--info' : 'notice--error'}`} role={reviewMsg.ok ? 'status' : 'alert'}>{reviewMsg.text}</div>
+            <Notice tone={reviewMsg.ok ? 'success' : 'error'}>{reviewMsg.text}</Notice>
           )}
 
           {writing && (

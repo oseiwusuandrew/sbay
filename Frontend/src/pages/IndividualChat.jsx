@@ -6,6 +6,7 @@ import { api } from '../api/client';
 import { adaptChat, adaptMessage } from '../api/adapters';
 import { useAuth } from '../store/AuthContext';
 import { useSocket } from '../hooks/useSocket';
+import { Notice } from '../components/Feedback';
 import './pages.css';
 import './IndividualChat.css';
 
@@ -155,7 +156,7 @@ export default function IndividualChat() {
               <Send size={18} />
             </button>
           </form>
-          {error && <p className="muted small" style={{ color: '#c0392b', padding: '0 14px 10px' }}>{error}</p>}
+          {error && <Notice tone="error" style={{ margin: '0 14px 10px' }}>{error}</Notice>}
         </>
       )}
     </div>

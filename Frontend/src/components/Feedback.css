@@ -1,0 +1,62 @@
+/* ================================================================
+   Feedback: inline notices and toasts.
+   Colours come only from the tone tokens in index.css.
+   ================================================================ */
+
+/* ---------- Tone variables ---------- */
+.notice--success, .toast--success { --tone: var(--success); --tone-bg: var(--success-50); --tone-border: var(--success-border); }
+.notice--warning, .toast--warning,
+.notice--warn                     { --tone: var(--warning); --tone-bg: var(--warning-50); --tone-border: var(--warning-border); }
+.notice--error,   .toast--error   { --tone: var(--error);   --tone-bg: var(--error-50);   --tone-border: var(--error-border); }
+.notice--info,    .toast--info    { --tone: var(--info);    --tone-bg: var(--info-50);    --tone-border: var(--info-border); }
+
+/* ---------- Notice (stays on the page) ---------- */
+.notice {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--tone-border, var(--border));
+  border-radius: var(--r-md);
+  background: var(--tone-bg, var(--surface));
+  color: var(--tone, var(--text));
+  font-size: var(--fs-sm); font-weight: 500; line-height: 1.45;
+}
+.notice-ic { flex-shrink: 0; margin-top: 1px; }
+.notice-body { flex: 1; min-width: 0; }
+.notice-body strong { display: block; font-weight: 700; margin-bottom: 2px; }
+.notice > .btn { align-self: center; }
+
+/* ---------- Toasts (short-lived) ---------- */
+.toast-stack {
+  position: fixed; z-index: 10000;
+  top: calc(14px + env(safe-area-inset-top, 0px));
+  left: 50%; transform: translateX(-50%);
+  width: min(420px, calc(100vw - 24px));
+  display: flex; flex-direction: column; gap: 8px;
+  pointer-events: none;
+}
+@media (min-width: 961px) { .toast-stack { top: calc(var(--nav-h) + 14px); } }
+
+.toast {
+  pointer-events: auto;
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 10px 11px 14px;
+  background: var(--surface);
+  border: 1px solid var(--tone-border);
+  border-left: 4px solid var(--tone);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-lg);
+  color: var(--text);
+  font-size: 0.9rem; font-weight: 600;
+}
+.toast-ic { color: var(--tone); flex-shrink: 0; }
+.toast-msg { flex: 1; min-width: 0; }
+.toast-action {
+  color: var(--tone); font-weight: 700; white-space: nowrap;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.toast-close {
+  flex-shrink: 0; width: 28px; height: 28px; border-radius: 8px;
+  display: grid; place-items: center;
+  color: var(--text-soft); background: none; border: none; cursor: pointer;
+}
+.toast-close:hover { background: var(--surface-3); color: var(--text); }

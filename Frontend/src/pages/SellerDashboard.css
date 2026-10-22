@@ -143,7 +143,7 @@
   color: var(--text-muted);
 }
 .sd-nav-ic.danger {
-  background: #fde6e6;
+  background: var(--error-50);
   color: var(--error);
 }
 
@@ -185,7 +185,7 @@
   color: #6b4d00;
 }
 .sd-verify-banner.is-warn {
-  background: #fde6e6;
+  background: var(--error-50);
   border-color: #f3c4c4;
   color: var(--error);
 }
@@ -232,7 +232,7 @@
   transition: all .15s ease;
 }
 .iac:hover { color: var(--primary); background: var(--primary-50); }
-.iac.danger:hover { color: var(--error); background: #fde6e6; }
+.iac.danger:hover { color: var(--error); background: var(--error-50); }
 
 .sd-chats { display: flex; flex-direction: column; gap: 6px; }
 .small { font-size: .78rem; }

@@ -7,6 +7,9 @@ const Ctx = createContext(null);
  * Usage:
  *   const { confirm, prompt, alert } = useAdminConfirm();
  *
+ *   For "it worked / it failed" messages use useToast() from
+ *   components/Feedback instead of alert().
+ *
  *   // Simple confirmation
  *   if (!(await confirm('Delete this item?'))) return;
  *
@@ -94,8 +97,8 @@ function AdminModal({ modal, close }) {
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
             <span style={{
               width: 38, height: 38, borderRadius: 10, flexShrink: 0,
-              background: isDanger ? '#fde6e6' : 'var(--a-bg, #f4f6f4)',
-              color: isDanger ? '#b3372c' : 'var(--a-primary, #0A7E3E)',
+              background: isDanger ? 'var(--error-50)' : 'var(--info-50)',
+              color: isDanger ? 'var(--error)' : 'var(--info)',
               display: 'grid', placeItems: 'center',
             }}>
               {isDanger ? <AlertTriangle size={18} /> : <Info size={18} />}
@@ -152,7 +155,7 @@ function AdminModal({ modal, close }) {
             autoFocus={modal.type !== 'prompt'}
             style={{
               padding: '9px 20px', borderRadius: 8,
-              background: isDanger ? '#b3372c' : 'var(--a-primary, #0A7E3E)',
+              background: isDanger ? 'var(--error)' : 'var(--a-primary, #0A7E3E)',
               color: '#fff', border: 'none',
               fontSize: '.88rem', fontWeight: 700, cursor: 'pointer',
             }}

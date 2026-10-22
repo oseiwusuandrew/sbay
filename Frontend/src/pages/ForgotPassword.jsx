@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, CheckCircle2, Loader2, MailCheck } from 'lucide-react';
 import AuthLayout from '../components/AuthLayout';
 import { useAuth } from '../store/AuthContext';
+import { Notice } from '../components/Feedback';
 
 export default function ForgotPassword() {
   const navigate = useNavigate();
@@ -88,7 +89,7 @@ export default function ForgotPassword() {
               <input id="fp-pw2" type={show ? 'text' : 'password'} autoComplete="new-password" placeholder="Type it again" value={pw2} onChange={(e) => setPw2(e.target.value)} minLength={8} required />
             </div>
           </div>
-          {err && <div className="auth-error" role="alert">{err}</div>}
+          {err && <Notice tone="error">{err}</Notice>}
           <button className="btn btn-primary auth-submit" type="submit" disabled={busy}>
             {busy ? <><Loader2 size={18} className="spin" /> Saving…</> : 'Save new password'}
           </button>
@@ -110,7 +111,7 @@ export default function ForgotPassword() {
             If an account exists for <strong>{email}</strong>, a reset link is on its way. It expires in 30 minutes.
             Can't find it? Check your spam folder.
           </p>
-          {devLink && <p className="auth-hint"><a href={devLink}>Open reset link (development only)</a></p>}
+          {devLink && <Notice tone="info"><a href={devLink}>Open reset link (development only)</a></Notice>}
           <button className="btn btn-ghost auth-submit" type="button" onClick={() => setSent(false)}>Use a different email</button>
         </div>
       ) : (
@@ -122,7 +123,7 @@ export default function ForgotPassword() {
               <input id="fp-email" type="email" autoComplete="email" inputMode="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />
             </div>
           </div>
-          {err && <div className="auth-error" role="alert">{err}</div>}
+          {err && <Notice tone="error">{err}</Notice>}
           <button className="btn btn-primary auth-submit" type="submit" disabled={busy}>
             {busy ? <><Loader2 size={18} className="spin" /> Sending…</> : 'Send reset link'}
           </button>

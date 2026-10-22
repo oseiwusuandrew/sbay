@@ -7,6 +7,7 @@ import {
 import TopBar from '../components/TopBar';
 import BottomNav from '../components/BottomNav';
 import { useAuth } from '../store/AuthContext';
+import { Notice } from '../components/Feedback';
 import './pages.css';
 import './Auth.css';
 import './Sell.css';
@@ -216,7 +217,7 @@ export default function SellerVerification() {
                   <li><span>Selfie</span><strong>{form.selfieImage ? 'Uploaded' : 'Missing'}</strong></li>
                 </ul>
                 <p className="muted small">By submitting you agree to sBay's verification policy. We'll email you as soon as it has been reviewed.</p>
-                {err && <div className="auth-error">{err}</div>}
+                {err && <Notice tone="error">{err}</Notice>}
               </>
             )}
           </motion.section>

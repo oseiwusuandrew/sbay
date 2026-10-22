@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowLeft, Heart, Share2, Star, ShoppingCart, Check, ShieldCheck, Copy, X, Send, Mail,
+  ArrowLeft, Heart, Share2, Star, ShoppingCart, ShieldCheck, Copy, X, Send, Mail,
   MapPin, ChevronLeft, ChevronRight, Minus, Plus, BadgeCheck, Pencil, PackageX, Zap, Eye,
 } from 'lucide-react';
 import { sbay } from '../api/client';
@@ -14,6 +14,7 @@ import Avatar from '../components/Avatar';
 import BottomNav from '../components/BottomNav';
 import Footer from '../components/Footer';
 import { Skeleton } from '../components/Skeleton';
+import { useToast } from '../components/Feedback';
 import { ghs } from '../utils/money';
 import './pages.css';
 import './ProductDetail.css';
@@ -58,13 +59,13 @@ export default function ProductDetail() {
   const { addItem, items: cartItems } = useCart();
   const { user } = useAuth();
   const { has, toggle } = useWishlist();
+  const toast = useToast();
 
   const [product, setProduct] = useState(null);
   const [error, setError] = useState('');
   const [seller, setSeller] = useState(null);
   const [activeImg, setActiveImg] = useState(0);
   const [qty, setQty] = useState(1);
-  const [toastMsg, setToastMsg] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
   const [similar, setSimilar] = useState([]);
   const [recentlyViewed, setRecentlyViewed] = useState([]);
@@ -113,11 +114,6 @@ export default function ProductDetail() {
 
   const inCart = useMemo(() => cartItems.find((i) => i.id === product?.id)?.qty || 0, [cartItems, product]);
 
-  const showToast = (msg) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 1900);
-  };
-
   if (error) {
     return (
       <div className="page">
@@ -165,7 +161,7 @@ export default function ProductDetail() {
     if (soldOut || isOwner) return;
     if (maxQty <= 0) {
       if (buyNow) { navigate('/checkout'); return; }
-      showToast(`You already have all ${product.stock} in your cart`);
+      toast.warning(`You already have all ${product.stock} in your cart`, { action: { label: 'View cart', to: '/cart' } });
       return;
     }
     addItem(product, Math.min(qty, maxQty));
@@ -173,7 +169,7 @@ export default function ProductDetail() {
       navigate(user ? '/checkout' : `/login?next=${encodeURIComponent('/checkout')}`);
       return;
     }
-    showToast('Added to cart');
+    toast.success('Added to cart', { action: { label: 'View cart', to: '/cart' } });
     setQty(1);
   };
 
@@ -182,7 +178,7 @@ export default function ProductDetail() {
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
-      showToast('Link copied');
+      toast.success('Link copied');
     } catch {
       window.prompt('Copy this link:', shareUrl);
     }
@@ -194,7 +190,7 @@ export default function ProductDetail() {
       await navigator.share({ title: product.title, text: shareText, url: shareUrl });
       setShareOpen(false);
     } catch (err) {
-      if (err?.name !== 'AbortError') showToast('Unable to share');
+      if (err?.name !== 'AbortError') toast.error('Unable to share');
     }
   };
 
@@ -267,7 +263,11 @@ export default function ProductDetail() {
               <div className="pdp-stage-actions">
                 <button
                   className={`round-btn ${saved ? 'is-saved' : ''}`}
-                  onClick={() => { toggle(product); showToast(saved ? 'Removed from wishlist' : 'Saved to wishlist'); }}
+                  onClick={() => {
+                toggle(product);
+                if (saved) toast.info('Removed from wishlist');
+                else toast.success('Saved to wishlist');
+              }}
                   aria-pressed={saved}
                   aria-label={saved ? 'Remove from wishlist' : 'Save to wishlist'}
                 >
@@ -392,20 +392,6 @@ export default function ProductDetail() {
         </div>
       )}
 
-      <AnimatePresence>
-        {toastMsg && (
-          <motion.div
-            className="toast"
-            role="status"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -16 }}
-          >
-            <Check size={16} /> {toastMsg}
-            {toastMsg === 'Added to cart' && <Link to="/cart" className="toast-link">View cart</Link>}
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <AnimatePresence>
         {shareOpen && (

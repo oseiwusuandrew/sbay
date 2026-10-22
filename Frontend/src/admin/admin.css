@@ -15,8 +15,8 @@
   --a-muted:     #7a847b;
   --a-primary:   #0A7E3E;
   --a-primary-soft: #e8f3ec;
-  --a-warn:      #9a6206;
-  --a-bad:       #b3372c;
+  --a-warn:      var(--warning);
+  --a-bad:       var(--error);
 
   --a-radius:    12px;
   --a-radius-sm: 8px;
@@ -277,10 +277,11 @@
   font-size: .75rem; font-weight: 600; white-space: nowrap;
   background: var(--a-primary-soft); color: var(--a-primary);
 }
-.admin-pill.warn { background: #fdf3df; color: var(--a-warn); }
-.admin-pill.bad  { background: #fbe9e7; color: var(--a-bad); }
+/* Pill tones follow the shared feedback colours (index.css). */
+.admin-pill.warn { background: var(--warning-50); color: var(--warning); }
+.admin-pill.bad  { background: var(--error-50); color: var(--error); }
 .admin-pill.mute { background: #f0f2ee; color: var(--a-text-2); }
-.admin-pill.info { background: #eaf0fb; color: #2c5fb3; }
+.admin-pill.info { background: var(--info-50); color: var(--info); }
 
 /* Row actions: quiet text buttons on one line */
 .admin-actions { display: flex; gap: 2px; flex-wrap: wrap; align-items: center; }
@@ -293,7 +294,7 @@
 .admin-actions .btn-ghost { border: none; background: transparent; color: var(--a-text-2); }
 .admin-actions .btn-ghost:hover { background: var(--a-bg); color: var(--a-text); }
 .admin-actions .btn-danger { border: none; background: transparent; color: var(--a-bad); }
-.admin-actions .btn-danger:hover { background: #fbe9e7; }
+.admin-actions .btn-danger:hover { background: var(--error-50); }
 
 /* ---------- Forms ---------- */
 .admin-form { display: grid; gap: 14px; max-width: 640px; }
@@ -382,7 +383,7 @@
 .admin-todo-count {
   min-width: 32px; height: 28px; padding: 0 8px; border-radius: var(--a-radius-sm);
   display: grid; place-items: center;
-  background: #fdf3df; color: var(--a-warn); font-weight: 700; font-size: .9rem;
+  background: var(--warning-50); color: var(--warning); font-weight: 700; font-size: .9rem;
 }
 .admin-todo-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .admin-todo-text strong { font-weight: 600; font-size: .92rem; }

@@ -4,6 +4,7 @@ import { Mail, Lock, User, Phone, Eye, EyeOff, ShoppingBag, Store, Check, X, Loa
 import AuthLayout from '../components/AuthLayout';
 import OAuthButtons from '../components/OAuthButtons';
 import { useAuth } from '../store/AuthContext';
+import { Notice } from '../components/Feedback';
 
 /** Score password strength on length + variety → { score 0..4, label, color, checks }. */
 function scorePassword(pw) {
@@ -159,7 +160,7 @@ export default function Signup() {
           )}
         </div>
 
-        {err && <div className="auth-error" role="alert">{err}</div>}
+        {err && <Notice tone="error">{err}</Notice>}
 
         <button className="btn btn-primary auth-submit" type="submit" disabled={busy}>
           {busy ? <><Loader2 size={18} className="spin" /> Creating your account…</> : (role === 'seller' ? 'Continue to shop setup' : 'Create account')}

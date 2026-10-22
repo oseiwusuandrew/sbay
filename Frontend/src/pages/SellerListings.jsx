@@ -7,12 +7,14 @@ import BottomNav from '../components/BottomNav';
 import Footer from '../components/Footer';
 import { productApi } from '../api/client';
 import { useConfirm } from '../store/ConfirmContext';
+import { useToast } from '../components/Feedback';
 import './pages.css';
 import './SellerDashboard.css';
 
 export default function SellerListings() {
   const navigate = useNavigate();
   const confirm = useConfirm();
+  const toast = useToast();
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [listingCat, setListingCat] = useState('all');
@@ -35,8 +37,9 @@ export default function SellerListings() {
     try {
       await productApi.remove(id);
       setListings((ls) => ls.filter((l) => l.id !== id));
+      toast.success('Listing deleted');
     } catch (e) {
-      alert(e.message || 'Could not delete this listing.');
+      toast.error(e.message || 'Could not delete this listing.');
     }
   };
 

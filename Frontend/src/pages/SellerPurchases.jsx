@@ -6,6 +6,7 @@ import BottomNav from '../components/BottomNav';
 import Footer from '../components/Footer';
 import { useOrders, ORDER_STATUSES } from '../store/OrdersContext';
 import { useConfirm } from '../store/ConfirmContext';
+import { useToast } from '../components/Feedback';
 import { sbay } from '../api/client';
 import './pages.css';
 import './SellerDashboard.css';
@@ -15,6 +16,7 @@ const STATUS_LABEL = ORDER_STATUSES.reduce((m, s) => (m[s.id] = s.label, m), {})
 export default function SellerPurchases() {
   const navigate = useNavigate();
   const confirm = useConfirm();
+  const toast = useToast();
   const { myOrders: purchases, confirmReceipt } = useOrders();
 
   const messageSeller = async (order) => {
@@ -23,7 +25,7 @@ export default function SellerPurchases() {
     try {
       const chat = await sbay.startChat(otherId);
       navigate(`/chat/${chat._id}`);
-    } catch (e) { alert(e.message || 'Could not open this chat.'); }
+    } catch (e) { toast.error(e.message || 'Could not open this chat.'); }
   };
 
   const onConfirmReceipt = async (id) => {
@@ -33,8 +35,10 @@ export default function SellerPurchases() {
       confirmLabel: 'Yes, release funds',
     });
     if (!ok) return;
-    try { await confirmReceipt(id); }
-    catch (e) { alert(e.message || 'Could not confirm receipt.'); }
+    try {
+      await confirmReceipt(id);
+      toast.success('Payment released to the seller');
+    } catch (e) { toast.error(e.message || 'Could not confirm receipt.'); }
   };
 
   return (

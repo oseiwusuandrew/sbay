@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { adminApi } from '../api/client';
 import { Search, Eye, EyeOff, Trash2 } from 'lucide-react';
 import { useAdminConfirm } from './AdminConfirmContext';
+import { Notice } from '../components/Feedback';
 
 /**
  * Moderation surface for every product on the platform. Hide takes
@@ -61,7 +62,7 @@ export default function AdminProducts() {
           <button className="btn btn-primary" disabled={busy}>{busy ? 'Loading…' : 'Apply'}</button>
         </form>
 
-        {err && <p className="muted" style={{ color: '#a4302a' }}>{err}</p>}
+        {err && <Notice tone="error">{err}</Notice>}
 
         <table className="admin-table">
           <thead>

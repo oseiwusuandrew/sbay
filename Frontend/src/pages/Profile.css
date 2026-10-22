@@ -172,7 +172,7 @@
   flex-shrink: 0;
 }
 .profile-nav-icon.danger {
-  background: #fde6e6;
+  background: var(--error-50);
   color: var(--error);
 }
 

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import { useAuth } from '../store/AuthContext';
+import { Notice } from '../components/Feedback';
 import './Auth.css';
 import './BecomeSeller.css';
 
@@ -350,7 +351,7 @@ export default function BecomeSeller() {
           )}
         </div>
         {error && (
-          <p className="auth-error" style={{ marginTop: 10 }}>{error}</p>
+          <Notice tone="error" style={{ marginTop: 10 }}>{error}</Notice>
         )}
       </div>
     </div>

@@ -193,22 +193,6 @@
   .pdp-mobilebar .btn-primary { min-width: 120px; }
 }
 
-/* ---------- Toast ---------- */
-.toast {
-  position: fixed;
-  top: calc(14px + env(safe-area-inset-top, 0px));
-  left: 50%;
-  transform: translateX(-50%);
-  display: inline-flex; align-items: center; gap: 8px;
-  background: var(--text); color: #fff;
-  padding: 10px 16px; border-radius: var(--r-pill);
-  font-weight: 600; font-size: 0.9rem;
-  box-shadow: var(--shadow-lg); z-index: 80;
-  white-space: nowrap;
-}
-.toast-link { color: #A7E3BE; font-weight: 800; margin-left: 4px; text-decoration: underline; text-underline-offset: 2px; }
-@media (min-width: 961px) { .toast { top: calc(var(--nav-h) + 14px); } }
-
 /* ---------- Share sheet (also used by SellerSubscription) ---------- */
 .share-overlay {
   position: fixed;

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChevronRight, CircleCheck } from 'lucide-react';
 import { adminApi } from '../api/client';
+import { Notice } from '../components/Feedback';
 
 const ghs = (n) => `GH₵ ${Math.round(n || 0).toLocaleString()}`;
 
@@ -83,7 +84,7 @@ export default function AdminDashboard() {
     ]).then(([sellers, students, tickets]) => setTodo({ sellers, students, tickets }));
   }, []);
 
-  if (err) return <p className="muted" style={{ color: 'var(--a-bad)' }}>{err}</p>;
+  if (err) return <Notice tone="error">{err}</Notice>;
   if (!data) return <p className="muted">Loading…</p>;
 
   const { users, products, orders, revenue, escrow, salesByDay } = data;

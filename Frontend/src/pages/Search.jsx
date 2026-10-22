@@ -6,6 +6,7 @@ import BottomNav from '../components/BottomNav';
 import Footer from '../components/Footer';
 import ProductCard, { ProductGrid } from '../components/ProductCard';
 import { SkeletonGrid } from '../components/Skeleton';
+import { Notice } from '../components/Feedback';
 import './pages.css';
 import './Search.css';
 
@@ -139,7 +140,7 @@ export default function SearchPage() {
           </label>
         </div>
 
-        {error && <div className="notice notice--error" role="alert">{error}</div>}
+        {error && <Notice tone="error">{error}</Notice>}
 
         {loading ? (
           <SkeletonGrid count={10} />

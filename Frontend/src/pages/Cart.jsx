@@ -10,6 +10,7 @@ import { useAuth } from '../store/AuthContext';
 import { useConfirm } from '../store/ConfirmContext';
 import { paymentApi } from '../api/client';
 import { ghs } from '../utils/money';
+import { Notice } from '../components/Feedback';
 import './pages.css';
 import './Cart.css';
 
@@ -65,7 +66,7 @@ export default function Cart() {
                 <h2 className="page-h2">{count} item{count === 1 ? '' : 's'}</h2>
                 <button className="btn btn-sm btn-danger" onClick={onClear}><Trash2 size={14} /> Empty cart</button>
               </div>
-              {quoteErr && <div className="notice notice--error" role="alert">{quoteErr}</div>}
+              {quoteErr && <Notice tone="error">{quoteErr}</Notice>}
               <div className="cart-list">
                 <AnimatePresence initial={false}>
                   {items.map((it) => (

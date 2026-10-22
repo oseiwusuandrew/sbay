@@ -9,6 +9,7 @@ import Footer from '../components/Footer';
 import { useOrders, ORDER_STATUSES } from '../store/OrdersContext';
 import { useConfirm } from '../store/ConfirmContext';
 import { sbay } from '../api/client';
+import { Notice } from '../components/Feedback';
 import './pages.css';
 import './SellerDashboard.css';
 
@@ -74,7 +75,7 @@ export default function SellerSales() {
           </div>
         </div>
 
-        {err && <div className="notice notice--error" role="alert">{err}</div>}
+        {err && <Notice tone="error">{err}</Notice>}
 
         {salesOrders.length === 0 && (
           <div className="empty">

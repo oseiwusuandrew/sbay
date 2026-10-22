@@ -4,6 +4,7 @@ import { Lock, LogOut, Trash2, Loader2 } from 'lucide-react';
 import { authApi } from '../api/client';
 import { useAuth } from '../store/AuthContext';
 import { useConfirm } from '../store/ConfirmContext';
+import { Notice } from './Feedback';
 
 /**
  * Change-password + sign-out + delete-account, shared by the buyer and
@@ -87,7 +88,7 @@ export default function AccountSecurity() {
               <span>Confirm new password</span>
               <input type="password" autoComplete="new-password" value={pw.confirm} onChange={(e) => setPw({ ...pw, confirm: e.target.value })} />
             </label>
-            {pwMsg && <div className={pwMsg.ok ? 'auth-hint' : 'auth-error'} role={pwMsg.ok ? 'status' : 'alert'} style={{ marginTop: 12 }}>{pwMsg.text}</div>}
+            {pwMsg && <Notice tone={pwMsg.ok ? 'success' : 'error'} style={{ marginTop: 12 }}>{pwMsg.text}</Notice>}
             <button className="btn btn-primary" type="submit" style={{ marginTop: 14 }} disabled={pwBusy}>
               {pwBusy && <Loader2 size={16} className="spin" />} Update password
             </button>

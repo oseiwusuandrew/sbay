@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Shield, MapPin, Check, Lock, Edit3, ChevronDown, ChevronUp,
-  AlertTriangle, Loader, CreditCard,
+  Loader, CreditCard,
 } from 'lucide-react';
 import TopBar from '../components/TopBar';
+import { Notice } from '../components/Feedback';
 import { useCart } from '../store/CartContext';
 import { useAuth } from '../store/AuthContext';
 import { paymentApi } from '../api/client';
@@ -175,10 +176,13 @@ export default function Checkout() {
           <div className="divider" />
           <div className="row total"><span>Total</span><strong>{quote ? ghs(total) : '—'}</strong></div>
           {quoteErr && (
-            <div className="co-error" role="alert">
-              <AlertTriangle size={16} /> {quoteErr}{' '}
-              <button type="button" className="link-btn" onClick={() => navigate('/cart')}>Review cart</button>
-            </div>
+            <Notice
+              tone="error"
+              style={{ marginTop: 12 }}
+              action={<button type="button" className="link-btn" onClick={() => navigate('/cart')}>Review cart</button>}
+            >
+              {quoteErr}
+            </Notice>
           )}
 
           <button type="button" className="co-review-toggle" onClick={() => setReviewOpen((v) => !v)}>
@@ -210,9 +214,7 @@ export default function Checkout() {
           )}
 
           {error && (
-            <div className="co-error" role="alert">
-              <AlertTriangle size={16} /> {error}
-            </div>
+            <Notice tone="error" style={{ marginTop: 12 }}>{error}</Notice>
           )}
 
           <motion.button

@@ -10,6 +10,7 @@ import TopBar from '../components/TopBar';
 import BottomNav from '../components/BottomNav';
 import { sbay, productApi, paymentApi } from '../api/client';
 import { useAuth } from '../store/AuthContext';
+import { Notice } from '../components/Feedback';
 import './pages.css';
 import './Sell.css';
 
@@ -548,9 +549,7 @@ export default function Sell() {
           )}
         </div>
         {error && (
-          <p className="muted small" style={{ color: '#c0392b', marginTop: 10, textAlign: 'center' }}>
-            {error}
-          </p>
+          <Notice tone="error" style={{ marginTop: 10 }}>{error}</Notice>
         )}
       </main>
 

@@ -3,6 +3,7 @@ import { useEffect, lazy, Suspense } from 'react';
 import { CartProvider } from './store/CartContext';
 import { AuthProvider } from './store/AuthContext';
 import { ConfirmProvider } from './store/ConfirmContext';
+import { ToastProvider } from './components/Feedback';
 import { OrdersProvider } from './store/OrdersContext';
 import { LocationProvider } from './store/LocationContext';
 import { WishlistProvider } from './store/WishlistContext';
@@ -96,6 +97,7 @@ export default function App() {
             <LocationProvider>
             <WishlistProvider>
             <BrowserRouter>
+              <ToastProvider>
               <ScrollToTop />
               <DesktopNav />
               <NetworkBanner />
@@ -177,6 +179,7 @@ export default function App() {
                 <Route path="*" element={<Navigate to="/home" replace />} />
               </Routes>
               </Suspense>
+              </ToastProvider>
             </BrowserRouter>
             </WishlistProvider>
             </LocationProvider>

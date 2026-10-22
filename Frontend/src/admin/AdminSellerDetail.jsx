@@ -6,6 +6,7 @@ import {
   Package, ShoppingBag, MessageSquare, BarChart3,
 } from 'lucide-react';
 import { useAdminConfirm } from './AdminConfirmContext';
+import { Notice, useToast } from '../components/Feedback';
 
 /**
  * Seller deep-dive — everything an admin needs to know about a single seller:
@@ -21,7 +22,8 @@ import { useAdminConfirm } from './AdminConfirmContext';
 export default function AdminSellerDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { confirm, prompt, alert } = useAdminConfirm();
+  const { confirm, prompt } = useAdminConfirm();
+  const toast = useToast();
   const [seller, setSeller] = useState(null);
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -71,7 +73,7 @@ export default function AdminSellerDetail() {
   }, [products, orders]);
 
   if (busy && !seller) return <p className="muted">Loading seller…</p>;
-  if (err && !seller) return <p className="muted" style={{ color: '#a4302a' }}>{err}</p>;
+  if (err && !seller) return <Notice tone="error">{err}</Notice>;
   if (!seller) return <p className="muted">Seller not found.</p>;
 
   // ---------- Actions ----------
@@ -101,7 +103,7 @@ export default function AdminSellerDetail() {
     try {
       await adminApi.delete(`/users/${seller._id}`);
       navigate('/admin/users/sellers', { replace: true });
-    } catch (e) { await alert(e.message || 'Could not delete seller.'); }
+    } catch (e) { toast.error(e.message || 'Could not delete seller.'); }
   };
 
   return (

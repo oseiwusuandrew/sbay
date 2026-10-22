@@ -13,7 +13,7 @@
   color: #fff;
   animation: nb-slide 0.3s ease-out;
 }
-.network-banner.offline { background: #c0392b; }
+.network-banner.offline { background: var(--error); }
 .network-banner.server { background: #e67e22; }
 .network-banner.timeout { background: #8e44ad; }
 .network-banner-actions {

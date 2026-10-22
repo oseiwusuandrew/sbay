@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { adminApi } from '../api/client';
 import { Plus, Save, Trash2 } from 'lucide-react';
 import { useAdminConfirm } from './AdminConfirmContext';
+import { Notice } from '../components/Feedback';
 
 const blank = {
   code: '', name: '', tag: '',
@@ -98,7 +99,7 @@ export default function AdminPlans() {
 
       <div className="admin-card">
         <h2>{draft.code ? `Edit "${draft.code}"` : <><Plus size={14} /> New plan</>}</h2>
-        {err && <p className="muted" style={{ color: '#a4302a' }}>{err}</p>}
+        {err && <Notice tone="error">{err}</Notice>}
         <form onSubmit={save} className="admin-form" style={{ maxWidth: 720 }}>
           <div className="plan-row">
             <label>Code <input value={draft.code} onChange={(e) => setDraft({ ...draft, code: e.target.value })} required /></label>

@@ -15,6 +15,7 @@ import { sbay } from '../api/client';
 import { useAuth } from '../store/AuthContext';
 import { useLocation as useCampus } from '../store/LocationContext';
 import { SkeletonGrid, Skeleton } from '../components/Skeleton';
+import { Notice } from '../components/Feedback';
 import './pages.css';
 import './Home.css';
 
@@ -145,10 +146,12 @@ export default function Home() {
 
       <main className="home-main">
         {failed && (
-          <div className="notice notice--warn" role="alert">
+          <Notice
+            tone="warning"
+            action={<button className="link-btn" onClick={() => window.location.reload()}>Retry</button>}
+          >
             We couldn't load listings. The server may be starting up, so please try again in a moment.
-            <button className="link-btn" onClick={() => window.location.reload()}>Retry</button>
-          </div>
+          </Notice>
         )}
 
         {campus ? (

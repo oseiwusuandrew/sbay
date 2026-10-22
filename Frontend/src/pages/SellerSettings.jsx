@@ -10,6 +10,7 @@ import Footer from '../components/Footer';
 import AccountSecurity from '../components/AccountSecurity';
 import { useAuth } from '../store/AuthContext';
 import { resizeImage } from '../utils/image';
+import { Notice } from '../components/Feedback';
 import './pages.css';
 import './Auth.css';
 import './SellerSettings.css';
@@ -188,7 +189,7 @@ export default function SellerSettings() {
             </label>
           </section>
 
-          {saveMsg && <div className={saveMsg.ok ? 'auth-hint' : 'auth-error'} role={saveMsg.ok ? 'status' : 'alert'}>{saveMsg.text}</div>}
+          {saveMsg && <Notice tone={saveMsg.ok ? 'success' : 'error'}>{saveMsg.text}</Notice>}
           <div className="settings-actions">
             <button className="btn btn-primary" type="submit" disabled={saving}>
               {saving ? <Loader2 size={16} className="spin" /> : <Check size={16} />} Save changes

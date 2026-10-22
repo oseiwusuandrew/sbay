@@ -32,7 +32,7 @@
   color: var(--primary);
   display: grid; place-items: center;
 }
-.cf-icon.danger { background: #fde6e6; color: var(--error); }
+.cf-icon.danger { background: var(--error-50); color: var(--error); }
 .cf-title { font-size: 1.1rem; font-weight: 800; }
 .cf-body  { color: var(--text-muted); font-size: 0.92rem; margin-top: 6px; }
 .cf-actions {

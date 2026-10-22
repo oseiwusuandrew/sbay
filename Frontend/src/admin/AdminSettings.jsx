@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { adminApi } from '../api/client';
 import { Save, UserPlus, Trash2, ShieldAlert } from 'lucide-react';
 import { useAdminConfirm } from './AdminConfirmContext';
+import { Notice, useToast } from '../components/Feedback';
 
 /**
  * Platform settings + admin team management on a single page.
@@ -12,7 +13,8 @@ import { useAdminConfirm } from './AdminConfirmContext';
  * lightweight for now.)
  */
 export default function AdminSettings() {
-  const { confirm, alert } = useAdminConfirm();
+  const { confirm } = useAdminConfirm();
+  const toast = useToast();
   const [settings, setSettings] = useState(null);
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsErr, setSettingsErr] = useState('');
@@ -46,6 +48,7 @@ export default function AdminSettings() {
       };
       const { data } = await adminApi.patch('/settings', payload);
       setSettings(data.settings);
+      toast.success('Settings saved');
     } catch (ex) { setSettingsErr(ex.message); }
     finally { setSavingSettings(false); }
   };
@@ -55,6 +58,7 @@ export default function AdminSettings() {
     setAdminErr('');
     try {
       await adminApi.post('/admins', newAdmin);
+      toast.success(`${newAdmin.email} is now an admin`);
       setNewAdmin({ name: '', email: '', password: '' });
       load();
     } catch (ex) { setAdminErr(ex.message); }
@@ -64,8 +68,9 @@ export default function AdminSettings() {
     if (!(await confirm(`Remove admin access from ${email}? They will be demoted to a buyer.`))) return;
     try {
       await adminApi.delete(`/admins/${id}`);
+      toast.success(`Removed admin access from ${email}`);
       load();
-    } catch (ex) { await alert(ex.message); }
+    } catch (ex) { toast.error(ex.message); }
   };
 
   if (!settings) return <p className="muted">Loading settings…</p>;
@@ -76,7 +81,7 @@ export default function AdminSettings() {
 
       <div className="admin-card">
         <h2>Platform</h2>
-        {settingsErr && <p className="muted" style={{ color: '#a4302a' }}>{settingsErr}</p>}
+        {settingsErr && <Notice tone="error">{settingsErr}</Notice>}
         <form className="admin-form" onSubmit={saveSettings}>
           <label>Platform name
             <input value={settings.platformName || ''}
@@ -137,7 +142,7 @@ export default function AdminSettings() {
         </table>
 
         <h2 style={{ marginTop: 18 }}>Add admin</h2>
-        {adminErr && <p className="muted" style={{ color: '#a4302a' }}>{adminErr}</p>}
+        {adminErr && <Notice tone="error">{adminErr}</Notice>}
         <form className="admin-form" onSubmit={addAdmin}>
           <label>Full name
             <input value={newAdmin.name} onChange={(e) => setNewAdmin({ ...newAdmin, name: e.target.value })} required />

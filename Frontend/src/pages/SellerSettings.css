@@ -27,7 +27,7 @@
   background: var(--primary-50); color: var(--primary);
   flex-shrink: 0;
 }
-.ss-quick-row.is-warn .ic { background: #fde6e6; color: var(--error); }
+.ss-quick-row.is-warn .ic { background: var(--error-50); color: var(--error); }
 .ss-quick-row strong { font-size: .95rem; font-weight: 700; display: block; }
 
 .settings-form {
@@ -92,4 +92,4 @@
   display: inline-flex; align-items: center; gap: 6px;
   justify-content: flex-start;
 }
-.danger-zone .danger-text:hover { background: #fde6e6; }
+.danger-zone .danger-text:hover { background: var(--error-50); }

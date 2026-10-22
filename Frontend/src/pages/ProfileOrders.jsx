@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Check, Store, Star, Truck, MessageCircle, Package, ShieldCheck, X, MapPin, Receipt,
 } from 'lucide-react';
@@ -9,6 +9,7 @@ import BottomNav from '../components/BottomNav';
 import Footer from '../components/Footer';
 import { SkeletonList } from '../components/Skeleton';
 import { useConfirm } from '../store/ConfirmContext';
+import { useToast } from '../components/Feedback';
 import { useOrders, ORDER_STATUSES } from '../store/OrdersContext';
 import { sbay } from '../api/client';
 import { ghs } from '../utils/money';
@@ -40,13 +41,13 @@ function readReviewed() {
 export default function ProfileOrders() {
   const navigate = useNavigate();
   const confirm = useConfirm();
+  const toast = useToast();
   const { myOrders, loading, confirmReceipt, cancel } = useOrders();
   const [tab, setTab] = useState('active');
   const [detail, setDetail] = useState(null);
   const [reviewing, setReviewing] = useState(null);
   const [draft, setDraft] = useState({ rating: 5, text: '' });
   const [busy, setBusy] = useState('');
-  const [flash, setFlash] = useState(null); // { kind, text }
   const [reviewed, setReviewed] = useState(readReviewed);
 
   const counts = useMemo(
@@ -57,18 +58,13 @@ export default function ProfileOrders() {
   const activeTab = tab === 'active' && counts.active === 0 && myOrders.length > 0 ? 'all' : tab;
   const visible = myOrders.filter(TABS.find((t) => t.id === activeTab).match);
 
-  const say = (kind, text) => {
-    setFlash({ kind, text });
-    setTimeout(() => setFlash(null), 3500);
-  };
-
   const run = async (key, fn, okText) => {
     setBusy(key);
     try {
       await fn();
-      if (okText) say('ok', okText);
+      if (okText) toast.success(okText);
     } catch (e) {
-      say('err', e.message || 'Something went wrong. Please try again.');
+      toast.error(e.message || 'Something went wrong. Please try again.');
     } finally {
       setBusy('');
     }
@@ -128,18 +124,6 @@ export default function ProfileOrders() {
             </button>
           ))}
         </div>
-
-        <AnimatePresence>
-          {flash && (
-            <motion.div
-              className={`notice ${flash.kind === 'err' ? 'notice--error' : 'notice--info'}`}
-              role={flash.kind === 'err' ? 'alert' : 'status'}
-              initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            >
-              {flash.kind === 'err' ? <X size={16} /> : <Check size={16} />} {flash.text}
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {loading && myOrders.length === 0 ? (
           <SkeletonList count={3} />

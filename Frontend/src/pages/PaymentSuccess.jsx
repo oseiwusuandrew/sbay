@@ -6,6 +6,7 @@ import { paymentApi } from '../api/client';
 import { adaptOrder } from '../api/adapters';
 import { useOrders } from '../store/OrdersContext';
 import { useCart } from '../store/CartContext';
+import { Notice } from '../components/Feedback';
 import './pages.css';
 import './PaymentSuccess.css';
 
@@ -208,7 +209,7 @@ export default function PaymentSuccess() {
         )}
 
         {verifyError && (
-          <p style={{ color: '#c0392b', fontSize: '0.85rem', marginTop: 12 }}>{verifyError}</p>
+          <Notice tone="error" style={{ marginTop: 12 }}>{verifyError}</Notice>
         )}
 
         <div className="ps-actions">

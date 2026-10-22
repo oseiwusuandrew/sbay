@@ -2,6 +2,7 @@ import { useGoogleLogin } from '@react-oauth/google';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useAuth } from '../store/AuthContext';
+import { Notice } from './Feedback';
 import './OAuthButtons.css';
 
 const GOOGLE_ENABLED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
@@ -47,7 +48,7 @@ function GoogleButton({ next = '/home', remember = true, role = 'buyer' }) {
       <div className="oauth-divider">
         <span>or</span>
       </div>
-      {error && <p className="auth-error" role="alert" style={{ margin: 0 }}>{error}</p>}
+      {error && <Notice tone="error">{error}</Notice>}
       <div className="oauth-buttons">
         <button
           type="button"

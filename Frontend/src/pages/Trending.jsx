@@ -8,6 +8,7 @@ import ProductCard, { ProductGrid } from '../components/ProductCard';
 import { SkeletonGrid } from '../components/Skeleton';
 import { sbay } from '../api/client';
 import { useLocation as useCampus } from '../store/LocationContext';
+import { Notice } from '../components/Feedback';
 import './pages.css';
 
 export default function Trending() {
@@ -65,7 +66,7 @@ export default function Trending() {
           )}
         </div>
 
-        {failed && <div className="notice notice--error" role="alert">Couldn't load trending items. Please try again.</div>}
+        {failed && <Notice tone="error">Couldn't load trending items. Please try again.</Notice>}
 
         {loading ? (
           <SkeletonGrid count={10} />

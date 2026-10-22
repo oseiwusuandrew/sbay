@@ -156,18 +156,6 @@
 }
 .co-review-loc p { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; }
 
-/* Error banner on checkout */
-.co-error {
-  display: flex; align-items: flex-start; gap: 8px;
-  background: var(--error-50); color: var(--error);
-  border: 1px solid #F3C4BF;
-  border-radius: var(--r-md);
-  padding: 10px 12px;
-  margin-top: 12px;
-  font-size: .9rem;
-  font-weight: 600;
-}
-.co-error svg { flex-shrink: 0; margin-top: 2px; }
 
 @media (min-width: 961px) {
   .checkout-page .page-main {

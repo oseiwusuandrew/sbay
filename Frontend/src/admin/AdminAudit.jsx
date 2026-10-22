@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { adminApi } from '../api/client';
+import { Notice } from '../components/Feedback';
 
 /**
  * Read-only audit trail. Every mutation an admin makes is logged on
@@ -44,7 +45,7 @@ export default function AdminAudit() {
           </label>
         </div>
 
-        {err && <p className="muted" style={{ color: '#a4302a' }}>{err}</p>}
+        {err && <Notice tone="error">{err}</Notice>}
 
         <table className="admin-table">
           <thead>

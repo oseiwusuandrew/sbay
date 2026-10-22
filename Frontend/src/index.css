@@ -14,10 +14,26 @@
   --secondary: #F2A516;
   --secondary-dark: #D48C07;
   --secondary-50: #FEF5E2;
-  --error: #C9372C;
-  --error-50: #FDECEA;
+
+  /* Feedback — one meaning per colour, used by <Notice>, toasts, pills
+     and every inline status message:
+       success  green  something finished as intended
+       warning  amber  needs attention, nothing is broken yet
+       error    red    something failed or is destructive
+       info     blue   neutral information
+     Each tone has a text colour, a soft background and a border. */
   --success: #0A7E3E;
-  --info: #2563EB;
+  --success-50: #EBF6EF;
+  --success-border: #C4E3CF;
+  --warning: #8A5A00;
+  --warning-50: #FEF5E2;
+  --warning-border: #F6DDA6;
+  --error: #C0392B;
+  --error-50: #FDECEA;
+  --error-border: #F3C4BF;
+  --info: #1D5FD1;
+  --info-50: #EDF3FD;
+  --info-border: #C9DAF8;
 
   /* Surfaces */
   --bg: #F5F6F3;
@@ -168,7 +184,7 @@ p { margin: 0; }
 .btn-danger {
   background: var(--surface);
   color: var(--error);
-  border-color: #F1C9C5;
+  border-color: var(--error-border);
 }
 .btn-danger:hover:not(:disabled) { background: var(--error-50); }
 .btn-sm, .btn.small { min-height: 36px; padding: 6px 14px; font-size: 0.85rem; border-radius: 10px; }

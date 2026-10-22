@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { Headphones, MessageCircle, X, Send, Loader2, GripVertical, Mail, Phone } from 'lucide-react';
 import { useAuth } from '../store/AuthContext';
 import { api } from '../api/client';
+import { Notice } from './Feedback';
 import './SupportWidget.css';
 
 /** Clamp a value between min and max. */
@@ -233,8 +234,8 @@ export default function SupportWidget() {
               {fieldErrors.message && <span className="support-field-err">{fieldErrors.message}</span>}
             </label>
 
-            {error && <p className="support-error" role="alert">{error}</p>}
-            {sent && <p className="support-success">Thanks, your message has been sent. We'll reply by email soon.</p>}
+            {error && <Notice tone="error">{error}</Notice>}
+            {sent && <Notice tone="success">Thanks, your message has been sent. We'll reply by email soon.</Notice>}
 
             <button
               type="submit"

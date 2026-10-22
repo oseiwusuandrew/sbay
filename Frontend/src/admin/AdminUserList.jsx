@@ -5,6 +5,7 @@ import {
   Search, ShieldOff, ShieldCheck, BadgeCheck, BadgeX, Trash2,
 } from 'lucide-react';
 import { useAdminConfirm } from './AdminConfirmContext';
+import { Notice, useToast } from '../components/Feedback';
 
 /**
  * Shared user-list table. Used by:
@@ -28,7 +29,8 @@ export default function AdminUserList({
   initialQuery = '',
 }) {
   const navigate = useNavigate();
-  const { confirm, prompt, alert } = useAdminConfirm();
+  const { confirm, prompt } = useAdminConfirm();
+  const toast = useToast();
   const [items, setItems]           = useState([]);
   const [me, setMe]                 = useState(null);
   const [q, setQ]                   = useState(initialQuery);
@@ -106,7 +108,7 @@ export default function AdminUserList({
       await adminApi.delete(`/users/${u._id}`);
       load();
     } catch (e) {
-      await alert(e.message || 'Could not delete user.');
+      toast.error(e.message || 'Could not delete user.');
     }
   };
 
@@ -150,7 +152,7 @@ export default function AdminUserList({
           <button className="btn btn-primary" disabled={busy}>{busy ? 'Loading…' : 'Apply'}</button>
         </form>
 
-        {err && <p className="muted" style={{ color: '#a4302a' }}>{err}</p>}
+        {err && <Notice tone="error">{err}</Notice>}
 
         <table className="admin-table">
           <thead>
