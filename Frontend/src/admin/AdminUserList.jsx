@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminApi } from '../api/client';
 import {
-  Search, ShieldOff, ShieldCheck, BadgeCheck, BadgeX, Trash2, ExternalLink,
+  Search, ShieldOff, ShieldCheck, BadgeCheck, BadgeX, Trash2,
 } from 'lucide-react';
 import { useAdminConfirm } from './AdminConfirmContext';
 
@@ -159,7 +159,7 @@ export default function AdminUserList({
               <th>Role</th>
               <th>Status</th>
               <th>Joined</th>
-              <th style={{ width: 280 }}>Actions</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -199,16 +199,10 @@ export default function AdminUserList({
                           : <span className="admin-pill mute">Unverified</span>}
                   </td>
                   <td>
-                    <div className="admin-date">
-                      <strong>{new Date(u.createdAt).toLocaleDateString()}</strong>
-                      {new Date(u.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </div>
+                    <span className="admin-date">{new Date(u.createdAt).toLocaleDateString()}</span>
                   </td>
                   <td>
                     <div className="admin-actions">
-                      <button className="btn btn-ghost" onClick={go}>
-                        <ExternalLink size={14} /> View
-                      </button>
                       {u.verification?.status === 'pending' && (
                         <>
                           <button className="btn btn-primary" onClick={() => verify(u._id, 'approved')}>
