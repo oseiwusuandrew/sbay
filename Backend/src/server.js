@@ -8,6 +8,17 @@ import { seedPlansIfNeeded } from './seed/seedPlans.js';
 import { repairListings } from './seed/repairListings.js';
 import { migrateInlineImages } from './seed/migrateImages.js';
 
+async function runHousekeeping() {
+  for (const [name, task] of [['repair', repairListings], ['migrate', migrateInlineImages]]) {
+    try {
+      await task();
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(`[${name}] failed:`, err.message);
+    }
+  }
+}
+
 async function main() {
   // 1. Connect to MongoDB before we accept any HTTP traffic.
   await connectDB();
@@ -17,11 +28,6 @@ async function main() {
   // 2. First-boot seeds (admin user, default plans). No-ops if data exists.
   await seedAdminIfNeeded();
   await seedPlansIfNeeded();
-  // Never block boot on housekeeping; a failure here is logged and retried next start.
-  // eslint-disable-next-line no-console
-  await repairListings().catch((err) => console.error('[repair] listings failed:', err.message));
-  // eslint-disable-next-line no-console
-  await migrateInlineImages().catch((err) => console.error('[migrate] images failed:', err.message));
 
   // 3. Build the Express app, wrap in HTTP server, attach Socket.IO.
   const app = buildApp();
@@ -34,6 +40,11 @@ async function main() {
 
     // eslint-disable-next-line no-console
     console.log('[socket] Socket.IO attached');
+
+    // 4. Housekeeping runs after the port is open: the host's health check
+    // must not wait on it (moving many inline photos can take minutes).
+    // Failures are logged and retried on the next start.
+    runHousekeeping();
   });
 
   const shutdown = async (signal) => {
