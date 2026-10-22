@@ -3,8 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ChevronRight, CircleCheck } from 'lucide-react';
 import { adminApi } from '../api/client';
 import { Notice } from '../components/Feedback';
+import { ghs as money } from '../utils/money';
 
-const ghs = (n) => `GH₵ ${Math.round(n || 0).toLocaleString()}`;
+// Summary figures read better as whole cedis.
+const ghs = (n) => money(Math.round(n || 0));
 
 // Clickable stat tile that deep-links into the list it summarises.
 function Tile({ label, value, sub, onClick }) {

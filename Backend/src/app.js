@@ -21,6 +21,7 @@ import chatRoutes from './routes/chatRoutes.js';
 import publicRoutes from './routes/publicRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import supportRoutes from './routes/supportRoutes.js';
+import imageRoutes from './routes/imageRoutes.js';
 
 export function buildApp() {
   const app = express();
@@ -30,12 +31,14 @@ export function buildApp() {
   app.set('trust proxy', 1); // honour X-Forwarded-For when behind a proxy
   app.use(helmet());
   app.use(compression());
-  app.use(express.json({
+  const jsonBody = express.json({
     limit: '2mb',
     verify: (req, _res, buf) => {
       if (req.originalUrl?.includes('/payments/webhook')) req.rawBody = buf;
     },
-  }));
+  });
+  // Image uploads parse their own (larger) body in imageRoutes.
+  app.use((req, res, next) => (req.path.startsWith('/api/images') ? next() : jsonBody(req, res, next)));
   app.use(express.urlencoded({ extended: true, limit: '1mb' }));
   app.use(cookieParser());
   app.use(mongoSanitize());                // strip $ / . from req bodies
@@ -69,6 +72,9 @@ export function buildApp() {
   app.get('/health', (_req, res) => res.json({ ok: true, ts: Date.now() }));
 
   // ---- API ---------------------------------------------------------
+  // Images first: a single page can load dozens, and they must not use up
+  // the general rate limit. Uploads still require a signed-in user.
+  app.use('/api/images', imageRoutes);
   app.use('/api', generalLimiter);
 
   app.use('/api/auth', authRoutes);

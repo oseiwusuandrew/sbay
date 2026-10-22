@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { adminApi } from '../api/client';
+import { isNew } from './format';
+import { mediaUrl } from '../api/config';
 import { useAdminConfirm } from './AdminConfirmContext';
 import {
   Search, Banknote, Undo2, X, Package, User, Store, MapPin,
@@ -45,8 +47,6 @@ export default function AdminOrders() {
     finally { setBusy(false); }
   }, [q, status, escrowStatus]);
 
-  const [now] = useState(() => Date.now());
-  const isNew = (date) => now - new Date(date).getTime() < 24 * 3600 * 1000;
 
   useEffect(() => { load(); }, [load]);
 
@@ -289,7 +289,7 @@ export default function AdminOrders() {
                   }}>
                     {item.product?.images?.[0] && (
                       <img
-                        src={item.product.images[0]}
+                        src={mediaUrl(item.product.images[0])}
                         alt={item.product.title}
                         style={{ width: 56, height: 56, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }}
                       />

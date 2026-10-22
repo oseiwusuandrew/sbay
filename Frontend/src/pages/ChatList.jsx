@@ -4,37 +4,45 @@ import { Search, MessageCircle } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import BottomNav from '../components/BottomNav';
 import { sbay } from '../api/client';
-import { useAuth } from '../store/AuthContext';
 import { SkeletonList } from '../components/Skeleton';
 import './pages.css';
 import './ChatList.css';
 
+/**
+ * All conversations, buying and selling alike. Each row names the other
+ * person and the item the chat is about.
+ */
 export default function ChatList() {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [chats, setChats] = useState(null);
   const [q, setQ] = useState('');
 
   useEffect(() => {
-    // Backend returns the same /chats payload either way; we only pick
-    // a different adapter so the row shows the *other* party's name.
-    const fetcher = user?.role === 'seller' ? sbay.getSellerChats : sbay.getChats;
-    fetcher.call(sbay).then(setChats).catch(() => setChats([]));
-  }, [user?.role]);
+    sbay.getChats().then(setChats).catch(() => setChats([]));
+  }, []);
 
   const loading = chats === null;
+  const needle = q.trim().toLowerCase();
   const filtered = (chats || []).filter((c) =>
-    c.name.toLowerCase().includes(q.toLowerCase())
-  );
+    !needle
+    || c.name.toLowerCase().includes(needle)
+    || (c.productTitle || '').toLowerCase().includes(needle));
 
   return (
     <div className="page">
       <TopBar title="Messages" showSearch={false} />
       <main className="page-main">
-        <div className="chat-search">
-          <Search size={16} />
-          <input placeholder="Search conversations" value={q} onChange={(e) => setQ(e.target.value)} />
-        </div>
+        {!loading && chats.length > 0 && (
+          <label className="chat-search">
+            <Search size={16} aria-hidden="true" />
+            <input
+              placeholder="Search by name or item"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              aria-label="Search conversations"
+            />
+          </label>
+        )}
 
         {loading && <SkeletonList count={5} />}
 
@@ -44,8 +52,8 @@ export default function ChatList() {
             <h3>{q ? 'No matching conversations' : 'No messages yet'}</h3>
             <p className="muted">
               {q
-                ? 'Try a different name.'
-                : 'Chats unlock once you place an order, so you can arrange pickup or delivery with the seller.'}
+                ? 'Try a different name or item.'
+                : 'A chat opens with the seller once you place an order, so you can arrange pickup or delivery.'}
             </p>
             {!q && <button className="btn btn-primary" onClick={() => navigate('/home')}>Browse listings</button>}
           </div>
@@ -54,12 +62,20 @@ export default function ChatList() {
         <div className="chat-list">
           {filtered.map((c) => (
             <button key={c.id} className="chat-row" onClick={() => navigate(`/chat/${c.id}`)}>
-              <div className="chat-avatar" style={{ backgroundImage: `url(${c.avatar})` }} />
+              <div className="chat-avatar" style={c.avatar ? { backgroundImage: `url(${c.avatar})` } : undefined}>
+                {!c.avatar && c.name.charAt(0).toUpperCase()}
+              </div>
               <div className="chat-info">
                 <div className="chat-row-top">
                   <h4>{c.name}</h4>
                   <span className="muted">{c.time}</span>
                 </div>
+                {c.productTitle && (
+                  <p className="chat-item">
+                    <span className="chat-role">{c.viewerRole === 'seller' ? 'Selling' : 'Buying'}</span>
+                    {c.productTitle}
+                  </p>
+                )}
                 <p className="muted last">{c.last}</p>
               </div>
               {c.unread > 0 && <span className="unread-pulse">{c.unread}</span>}

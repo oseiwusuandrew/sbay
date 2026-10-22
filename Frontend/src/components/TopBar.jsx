@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Bell, ShoppingCart, ArrowLeft, X } from 'lucide-react';
+import { Search, Bell, ShoppingCart, ArrowLeft, X, UserRound } from 'lucide-react';
 import Logo from './Logo';
+import Avatar from './Avatar';
 import { useCart } from '../store/CartContext';
 import { useAuth } from '../store/AuthContext';
 import { useUserNotifications } from '../hooks/useUserNotifications';
@@ -101,13 +102,11 @@ export default function TopBar({
           </button>
           <button
             className="avatar"
-            onClick={() => navigate(user?.role === 'seller' ? '/seller-dashboard' : '/profile')}
-            aria-label={user?.role === 'seller' ? 'Seller dashboard' : 'Profile'}
-            style={{
-              backgroundImage:
-                `url(${user?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&q=80'})`,
-            }}
-          />
+            onClick={() => navigate(user ? (user.role === 'seller' ? '/seller-dashboard' : '/profile') : '/login')}
+            aria-label={user ? (user.role === 'seller' ? 'Seller dashboard' : 'Profile') : 'Sign in'}
+          >
+            {user ? <Avatar src={user.avatar} name={user.name} size={36} /> : <UserRound size={20} />}
+          </button>
         </div>
       )}
     </header>

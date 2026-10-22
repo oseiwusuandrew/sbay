@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { API_URL } from './config';
 import {
   adaptProduct, adaptSeller, adaptUser,
   adaptOrder, adaptChat, adaptMessage,
@@ -11,12 +12,10 @@ import {
  * propagate immediately after login/logout without us having to mutate
  * `axios.defaults` from the auth store.
  */
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 const ADMIN_URL = import.meta.env.VITE_ADMIN_API || `${API_URL}/_panel/control`;
 
 export const TOKEN_KEY = 'sbay.token';
 export const SESSION_TOKEN_KEY = 'sbay.token.session';
-export const REMEMBER_KEY = 'sbay.remember';
 
 export const getToken = () => localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(SESSION_TOKEN_KEY);
 export const setToken = (t, remember = true) => {
@@ -349,13 +348,10 @@ export const sbay = {
 
 
   /* ----- Chats ----- */
+  /** Every conversation the user is in; each chat says which side they're on. */
   async getChats() {
     const { data } = await api.get('/chats');
     return data.chats.map((c) => adaptChat(c, 'buyer'));
-  },
-  async getSellerChats() {
-    const { data } = await api.get('/chats');
-    return data.chats.map((c) => adaptChat(c, 'seller'));
   },
   async getMessages(chatId, currentUserId) {
     const { data } = await api.get(`/chats/${chatId}`);
@@ -385,9 +381,12 @@ export const sbay = {
     const { data } = await api.get('/plans');
     return data.plans;
   },
+  /** Platform settings plus the fixed list of listing categories. */
   async getPublicSettings() {
-    const { data } = await api.get('/settings');
-    return data.settings;
+    return cached('public-settings', 300_000, async () => {
+      const { data } = await api.get('/settings');
+      return { ...data.settings, categories: data.categories || [] };
+    });
   },
 
   /* ----- Notifications — backend not implemented yet, return empty. ----- */

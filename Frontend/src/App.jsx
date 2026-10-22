@@ -41,13 +41,10 @@ const BecomeSeller    = lazy(() => import('./pages/BecomeSeller'));
 const SellerDashboard    = lazy(() => import('./pages/SellerDashboard'));
 const SellerListings    = lazy(() => import('./pages/SellerListings'));
 const SellerSales       = lazy(() => import('./pages/SellerSales'));
-const SellerPurchases   = lazy(() => import('./pages/SellerPurchases'));
-const SellerMessages    = lazy(() => import('./pages/SellerMessages'));
 const Terms             = lazy(() => import('./pages/Terms'));
 const SellerSubscription = lazy(() => import('./pages/SellerSubscription'));
 const SellerSettings  = lazy(() => import('./pages/SellerSettings'));
 const SellerVerification = lazy(() => import('./pages/SellerVerification'));
-const EditListing    = lazy(() => import('./pages/EditListing'));
 const Categories      = lazy(() => import('./pages/Categories'));
 const Trending        = lazy(() => import('./pages/Trending'));
 
@@ -143,12 +140,12 @@ export default function App() {
                 {/* Seller flow — auth + seller role */}
                 <Route path="/become-seller"    element={<RequireAuth><BecomeSeller /></RequireAuth>} />
                 <Route path="/sell"             element={<RequireAuth role="seller"><Sell /></RequireAuth>} />
-                <Route path="/seller/listing/:id/edit" element={<RequireAuth role="seller"><EditListing /></RequireAuth>} />
+                <Route path="/seller/listing/:id/edit" element={<RequireAuth role="seller"><Sell /></RequireAuth>} />
                 <Route path="/seller-dashboard"           element={<RequireAuth role="seller"><SellerDashboard /></RequireAuth>} />
                 <Route path="/seller-dashboard/listings"  element={<RequireAuth role="seller"><SellerListings /></RequireAuth>} />
                 <Route path="/seller-dashboard/sales"     element={<RequireAuth role="seller"><SellerSales /></RequireAuth>} />
-                <Route path="/seller-dashboard/purchases" element={<RequireAuth role="seller"><SellerPurchases /></RequireAuth>} />
-                <Route path="/seller-dashboard/messages"  element={<RequireAuth role="seller"><SellerMessages /></RequireAuth>} />
+                <Route path="/seller-dashboard/purchases" element={<Navigate to="/profile/orders" replace />} />
+                <Route path="/seller-dashboard/messages"  element={<Navigate to="/chats" replace />} />
                 <Route path="/terms"                       element={<Terms />} />
                 <Route path="/seller/subscription" element={<RequireAuth role="seller"><SellerSubscription /></RequireAuth>} />
                 <Route path="/seller/settings"     element={<RequireAuth role="seller"><SellerSettings /></RequireAuth>} />

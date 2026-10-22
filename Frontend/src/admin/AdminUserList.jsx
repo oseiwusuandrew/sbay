@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminApi, sbay } from '../api/client';
+import { isNew } from './format';
 import {
   Search, ShieldOff, ShieldCheck, BadgeCheck, BadgeX, Trash2,
 } from 'lucide-react';
@@ -126,10 +127,6 @@ export default function AdminUserList({
     }
   };
 
-  const isNew = (date) => {
-    const ms = Date.now() - new Date(date).getTime();
-    return ms < 24 * 3600 * 1000;
-  };
 
   return (
     <>

@@ -7,6 +7,7 @@ import {
 import Logo from '../components/Logo';
 import { useAuth } from '../store/AuthContext';
 import { Notice } from '../components/Feedback';
+import { resizeImage } from '../utils/image';
 import './Auth.css';
 import './BecomeSeller.css';
 
@@ -52,27 +53,16 @@ export default function BecomeSeller() {
   const next = () => setStep((s) => Math.min(STEPS.length - 1, s + 1));
   const prev = () => setStep((s) => Math.max(0, s - 1));
 
-  /** Convert a File to a base64 data URL. */
-  const fileToDataUrl = (file) =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-
   const finish = async () => {
     setError('');
     setSubmitting(true);
     try {
-      // Convert student ID image to base64 if present.
+      // The ID card stays private to admins, so it is sent inline rather than
+      // uploaded as a public image. Downscaling keeps any phone photo well
+      // under the request limit while the text stays readable.
       let idCardUrl;
       if (form.isStudent && form.studentId) {
-        // Validate file size client-side (3 MB limit).
-        if (form.studentId.size > 3 * 1024 * 1024) {
-          throw new Error('Student ID image is too large. Please upload a smaller photo (max 3 MB).');
-        }
-        idCardUrl = await fileToDataUrl(form.studentId);
+        idCardUrl = await resizeImage(form.studentId, 1600, 0.85);
       }
 
       await upgradeToSeller({

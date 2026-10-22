@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { adminApi } from '../api/client';
+import { isNew } from './format';
 import { Search, Eye, EyeOff, Trash2 } from 'lucide-react';
 import { useAdminConfirm } from './AdminConfirmContext';
 import { Notice } from '../components/Feedback';
@@ -29,7 +30,6 @@ export default function AdminProducts() {
     finally { setBusy(false); }
   }, [q, status]);
 
-  const isNew = (date) => Date.now() - new Date(date).getTime() < 24 * 3600 * 1000;
 
   useEffect(() => { load(); }, [load]);
 

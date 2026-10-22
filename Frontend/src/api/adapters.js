@@ -12,14 +12,31 @@
  * data without changing every page.
  */
 
-const placeholderImg =
-  'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=900&q=70';
+import { mediaUrl } from './config';
+
+// Neutral stand-in for listings without photos. Never a stock photo: a
+// picture of something else would misrepresent what is for sale.
+const placeholderImg = '/no-photo.svg';
+
+/** "14:05" today, "Yesterday", then "21 Oct" (with the year once it differs). */
+export function shortTime(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (d >= startOfToday) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (d >= new Date(startOfToday.getTime() - 864e5)) return 'Yesterday';
+  return d.toLocaleDateString(undefined, {
+    day: 'numeric', month: 'short', ...(d.getFullYear() !== now.getFullYear() && { year: 'numeric' }),
+  });
+}
 
 /** Map a Mongo Product to the frontend's flat product shape. */
 export function adaptProduct(p) {
   if (!p) return null;
   const seller = typeof p.seller === 'object' && p.seller ? p.seller : null;
-  const images = Array.isArray(p.images) && p.images.length ? p.images : [placeholderImg];
+  const images = Array.isArray(p.images) && p.images.length ? p.images.map(mediaUrl) : [placeholderImg];
   return {
     id: p._id,
     _id: p._id,
@@ -43,7 +60,7 @@ export function adaptProduct(p) {
     sellerId: seller?._id || p.seller,
     sellerName: seller?.sellerProfile?.storeName || seller?.name,
     sellerVerified: seller?.verified,
-    sellerAvatar: seller?.avatar,
+    sellerAvatar: mediaUrl(seller?.avatar),
     sellerRating: seller?.sellerProfile?.rating ?? 0,
     sellerReviews: seller?.sellerProfile?.reviewCount ?? 0,
     sellerLocation: seller?.sellerProfile?.location || seller?.location || '',
@@ -65,7 +82,7 @@ export function adaptSeller(u) {
     realName: u.name,
     email: u.email,
     role: u.role,
-    avatar: u.avatar,
+    avatar: mediaUrl(u.avatar),
     bio: sp.bio || '',
     tagline: sp.bio || '',
     rating: sp.rating ?? 0,
@@ -87,7 +104,7 @@ export function adaptUser(u) {
     name: u.name,
     email: u.email,
     role: u.role,
-    avatar: u.avatar,
+    avatar: mediaUrl(u.avatar),
     phone: u.phone,
     location: u.location,
     verified: !!u.verified,
@@ -131,10 +148,10 @@ export function adaptOrder(o, currentUserId) {
     sellerName: seller?.sellerProfile?.storeName || seller?.name || 'Seller',
     buyerLocation: buyer?.location || '',
     title: firstItem?.title || 'Order',
-    image: firstItem?.image || placeholderImg,
+    image: mediaUrl(firstItem?.image) || placeholderImg,
     price: firstItem?.price ?? total,
     qty:   firstItem?.qty   ?? 1,
-    items: o.items || [],
+    items: (o.items || []).map((it) => ({ ...it, image: mediaUrl(it.image) })),
     subtotal: o.subtotal,
     fee: o.fee,
     feePct: o.feePct,
@@ -171,14 +188,14 @@ export function adaptChat(c, currentUserRole) {
     name: isSeller
       ? (buyer?.name || 'Buyer')
       : (seller?.sellerProfile?.storeName || seller?.name || 'Seller'),
-    avatar: other?.avatar,
+    avatar: mediaUrl(other?.avatar),
     buyerName: buyer?.name,
     buyerLocation: buyer?.location || '',
     productId: firstOrder?.items?.[0]?.product,
     productTitle: firstOrder?.items?.[0]?.title,
-    productImage: firstOrder?.items?.[0]?.image,
+    productImage: mediaUrl(firstOrder?.items?.[0]?.image),
     last: c.lastMessagePreview || '',
-    time: c.lastMessageAt ? new Date(c.lastMessageAt).toLocaleString() : '',
+    time: shortTime(c.lastMessageAt),
     unread: isSeller ? c.unreadBySeller : c.unreadByBuyer,
     closed: c.closed,
     orders: c.orders,

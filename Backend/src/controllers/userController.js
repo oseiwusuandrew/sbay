@@ -6,6 +6,8 @@ import { Chat } from '../models/Chat.js';
 import { HttpError } from '../utils/httpError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { emitToAdmins } from '../socket.js';
+import { invalidateCatalogCache } from './productController.js';
+import { normalizeImage } from '../utils/media.js';
 
 /** Update the current user's own profile. Role and restriction flags
  *  are NEVER editable here — those are admin-only. */
@@ -15,6 +17,8 @@ export const updateMe = asyncHandler(async (req, res) => {
   for (const k of allowed) {
     if (req.body[k] !== undefined) patch[k] = req.body[k];
   }
+  // Avatars are stored as images, not embedded in the user document.
+  if (patch.avatar !== undefined) patch.avatar = await normalizeImage(patch.avatar, req.user._id);
 
   if (req.user.role === 'seller') {
     if (req.body.sellerProfile) {
@@ -363,18 +367,24 @@ export const deleteMyAccount = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
   if (!user) throw new HttpError(404, 'Account not found');
 
+  // Money still held for an order on either side means someone is owed it.
+  const openOrders = await Order.countDocuments({
+    $or: [{ seller: user._id }, { buyer: user._id }],
+    $and: [{ $or: [
+      { status: { $in: ['pending', 'processing', 'shipped', 'delivered'] } },
+      { 'escrow.status': 'held' },
+    ] }],
+  });
+  if (openOrders > 0) {
+    throw new HttpError(409, `You have ${openOrders} order(s) still in progress. Complete or cancel them before deleting your account.`);
+  }
+
   if (user.role === 'seller') {
-    const pendingOrders = await Order.countDocuments({
-      seller: user._id,
-      status: { $in: ['pending', 'processing', 'shipped'] },
-    });
-    if (pendingOrders > 0) {
-      throw new HttpError(409, `You have ${pendingOrders} pending order(s). Complete or cancel them before deleting your account.`);
-    }
     await Product.updateMany(
       { seller: user._id, status: { $ne: 'removed' } },
       { $set: { status: 'removed', removedReason: 'Account deleted by owner' } },
     );
+    invalidateCatalogCache();
   }
 
   user.name = 'Deleted User';

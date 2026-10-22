@@ -7,6 +7,7 @@
  *   <Avatar src={user.avatar} name={user.name} size={40} />
  */
 import { useState } from 'react';
+import { mediaUrl } from '../api/config';
 import './Avatar.css';
 
 const PALETTE = [
@@ -27,7 +28,8 @@ function initials(name = '') {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-export default function Avatar({ src, name = '', size = 40, className = '', style = {} }) {
+export default function Avatar({ src: rawSrc, name = '', size = 40, className = '', style = {} }) {
+  const src = mediaUrl(rawSrc);
   const bg = colorFor(name);
   const ini = initials(name);
   const fontSize = Math.max(10, Math.round(size * 0.38));

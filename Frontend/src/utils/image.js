@@ -1,7 +1,9 @@
+import { api } from '../api/client';
+
 /**
- * Downscale an image file to a square-ish JPEG data URL. Profile photos
- * are stored inline (the API caps them at ~1 MB), so a raw phone photo
- * used to be rejected without any message.
+ * Downscale an image file and re-encode it as a JPEG data URL. Phone photos
+ * are often 4-12 MB; this brings them to a few hundred KB before they
+ * leave the device.
  */
 export function resizeImage(file, maxSize = 512, quality = 0.85) {
   return new Promise((resolve, reject) => {
@@ -31,4 +33,14 @@ export function resizeImage(file, maxSize = 512, quality = 0.85) {
     };
     reader.readAsDataURL(file);
   });
+}
+
+/**
+ * Resize a photo and upload it. Resolves to the stored path
+ * ("/api/images/<id>"); show it with mediaUrl() from api/config.
+ */
+export async function uploadPhoto(file, { maxSize = 1600, quality = 0.82 } = {}) {
+  const dataUrl = await resizeImage(file, maxSize, quality);
+  const { data } = await api.post('/images', { dataUrl });
+  return data.url;
 }

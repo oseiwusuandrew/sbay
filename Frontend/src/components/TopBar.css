@@ -145,10 +145,11 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background-size: cover;
-  background-position: center;
-  border: 2px solid #fff;
-  box-shadow: 0 0 0 2px var(--primary);
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
   cursor: pointer;
 }
 

@@ -1,0 +1,149 @@
+/* ================================================================
+   Sell / edit listing — one page, with a live preview on wide screens.
+   ================================================================ */
+
+.sell-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+@media (min-width: 961px) {
+  .sell-layout { grid-template-columns: minmax(0, 1fr) 280px; gap: 28px; }
+}
+
+.sell-form { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.sell-sec { display: flex; flex-direction: column; gap: 14px; }
+.sell-sec h2 { margin: 0; font-size: var(--fs-lg); font-weight: 800; }
+.sell-sec-h { display: flex; align-items: baseline; justify-content: space-between; }
+.sell-sec > .muted.small { margin-top: -8px; }
+
+.sell-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+@media (min-width: 641px) {
+  .sell-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); }
+  .sell-row--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* ---------- Photos ---------- */
+.sell-photos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+@media (min-width: 641px) { .sell-photos { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+
+.sell-photo {
+  position: relative;
+  margin: 0;
+  aspect-ratio: 1;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--surface-3);
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+}
+.sell-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.sell-photo.is-loading { border: 1px dashed var(--border-strong); }
+
+.sell-photo-add {
+  cursor: pointer;
+  border: 1.5px dashed var(--border-strong);
+  background: var(--surface);
+  gap: 4px;
+  align-content: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-align: center;
+}
+.sell-photo-add:hover { border-color: var(--primary); color: var(--primary); }
+.sell-photo-add.has-error { border-color: var(--error); color: var(--error); }
+
+.sell-photo-cover {
+  position: absolute; left: 6px; bottom: 6px;
+  padding: 2px 8px; border-radius: var(--r-pill);
+  background: rgba(19, 26, 20, 0.75); color: #fff;
+  font-size: 0.7rem; font-weight: 700;
+}
+.sell-photo-btn {
+  position: absolute; top: 6px;
+  width: 26px; height: 26px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: rgba(19, 26, 20, 0.7); color: #fff;
+}
+.sell-photo-btn:hover { background: var(--text); }
+.sell-photo-x { right: 6px; }
+.sell-photo-star { left: 6px; }
+
+/* ---------- Condition picker ---------- */
+.sell-seg {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+@media (min-width: 641px) { .sell-seg { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.sell-seg button {
+  min-height: 46px;
+  padding: 6px 8px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.sell-seg button:hover { border-color: var(--border-strong); color: var(--text); }
+.sell-seg button.active {
+  border-color: var(--primary);
+  background: var(--primary-50);
+  color: var(--primary-ink);
+}
+
+/* ---------- Input with a leading icon ---------- */
+.sell-input-ic { position: relative; }
+.sell-input-ic svg {
+  position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+  color: var(--text-soft); pointer-events: none;
+}
+.field .sell-input-ic input { padding-left: 38px; }
+
+/* ---------- Actions ---------- */
+.sell-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.sell-actions .btn-primary { min-width: 180px; }
+@media (max-width: 640px) {
+  .sell-actions .btn { flex: 1; }
+  .sell-actions .btn-primary { min-width: 0; }
+}
+
+/* ---------- Preview ---------- */
+.sell-preview { display: none; }
+@media (min-width: 961px) {
+  .sell-preview {
+    display: flex; flex-direction: column; gap: 10px;
+    position: sticky; top: calc(var(--nav-h) + 20px);
+  }
+  .sell-preview .pcard { pointer-events: none; }
+}
+.sell-preview-label {
+  margin: 0;
+  font-size: var(--fs-xs); font-weight: 700;
+  color: var(--text-muted);
+}
+
+/* ---------- States ---------- */
+.sell-center {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  padding: 64px 0; color: var(--primary);
+}
+.sell-gate {
+  max-width: 440px; margin: 24px auto 0;
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  text-align: center;
+}
+.sell-gate h2 { margin: 0; font-size: var(--fs-xl); }
+.sell-gate-ic {
+  width: 56px; height: 56px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--primary-50); color: var(--primary);
+}

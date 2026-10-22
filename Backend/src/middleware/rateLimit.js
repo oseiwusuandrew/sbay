@@ -52,6 +52,15 @@ export const adminMutationLimiter = rateLimit({
  * Customer-support submission limiter — applies to the public ticket
  * intake endpoint so a single IP can't flood the inbox.
  */
+/** Photo uploads: generous for listing a few items, tight enough to stop storage abuse. */
+export const imageUploadLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 60,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'Too many photo uploads. Please wait a few minutes and try again.' },
+});
+
 export const supportSubmitLimiter = rateLimit({
   windowMs: 10 * 60 * 1000, // 10-minute window
   max: 10,

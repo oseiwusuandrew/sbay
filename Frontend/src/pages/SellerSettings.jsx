@@ -8,6 +8,7 @@ import TopBar from '../components/TopBar';
 import BottomNav from '../components/BottomNav';
 import Footer from '../components/Footer';
 import AccountSecurity from '../components/AccountSecurity';
+import Avatar from '../components/Avatar';
 import { useAuth } from '../store/AuthContext';
 import { resizeImage } from '../utils/image';
 import { Notice } from '../components/Feedback';
@@ -105,10 +106,7 @@ export default function SellerSettings() {
           <section className="card">
             <h3 className="page-h2"><Store size={16} /> Store identity</h3>
             <div className="avatar-row">
-              <div
-                className="avatar-preview"
-                style={{ backgroundImage: `url(${form.avatar || user?.avatar})` }}
-              />
+              <Avatar src={form.avatar || user?.avatar} name={form.storeName || user?.name} size={72} />
               <label className="btn btn-ghost">
                 <Camera size={16} /> Change photo
                 <input type="file" accept="image/*" onChange={handleAvatarUpload} hidden />

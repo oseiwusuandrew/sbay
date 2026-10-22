@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { adminApi } from '../api/client';
+import { isNew } from './format';
 import { IdCard, Check, X as XIcon, Eye, Search } from 'lucide-react';
 import { useAdminConfirm } from './AdminConfirmContext';
 import { Notice, useToast } from '../components/Feedback';
@@ -50,7 +51,6 @@ export default function AdminStudentVerification() {
     } catch (e) { toast.error(e.message || 'Could not update verification.'); }
   };
 
-  const isNew = (date) => date && Date.now() - new Date(date).getTime() < 24 * 3600 * 1000;
 
   return (
     <>

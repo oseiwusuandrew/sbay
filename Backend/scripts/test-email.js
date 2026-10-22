@@ -1,6 +1,6 @@
 /**
  * Quick Email Test Script
- * Run with: node test-email.js
+ * Run with: npm run email:test (from Backend/)
  * 
  * Tests if your Gmail SMTP configuration is working
  */

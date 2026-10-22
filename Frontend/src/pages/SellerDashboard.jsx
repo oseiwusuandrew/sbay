@@ -85,17 +85,17 @@ export default function SellerDashboard() {
       badge: pendingSales,
     },
     {
-      path: '/seller-dashboard/purchases',
+      path: '/profile/orders',
       icon: ShoppingBag,
       label: 'My purchases',
       desc: 'Track items you bought',
       badge: pendingPurchases,
     },
     {
-      path: '/seller-dashboard/messages',
+      path: '/chats',
       icon: MessageCircle,
-      label: 'Buyer messages',
-      desc: 'Chat with your buyers',
+      label: 'Messages',
+      desc: 'Chats with buyers and sellers',
       badge: 0,
     },
   ];

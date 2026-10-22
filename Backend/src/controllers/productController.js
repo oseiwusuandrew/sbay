@@ -4,6 +4,8 @@ import { Settings } from '../models/Settings.js';
 import { HttpError } from '../utils/httpError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { escapeRegex } from '../utils/regex.js';
+import { normalizeImages } from '../utils/media.js';
+import { canonicalCategory } from '../config/catalog.js';
 
 // In-memory cache for catalog meta (schools + categories). Avoids full-scan on every request.
 let catalogCache = { data: null, at: 0 };
@@ -55,6 +57,13 @@ function normalizeNumber(value) {
   if (value === undefined || value === null || value === '') return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
+}
+
+/** The optional "was" price is only shown when it is above the selling price. */
+function compareAt(price, was) {
+  const p = Number(price);
+  const w = Number(was);
+  return Number.isFinite(w) && w > p ? w : undefined;
 }
 
 function isDuplicateListing(existing, incoming) {
@@ -366,25 +375,29 @@ export const createProduct = asyncHandler(async (req, res) => {
     stock, condition, category, images, location, school, city,
   } = req.body;
 
-  // If category is "Other" or no school is provided, location is mandatory
-  const normalizedCategory = String(category || '').trim().toLowerCase();
-  const normalizedSchool = String(school || seller.verification?.university || '').trim();
-  const isOtherCategory = normalizedCategory === 'other' || normalizedCategory === 'others';
-  const hasNoSchool = !normalizedSchool;
+  const canonical = canonicalCategory(category);
+  if (!canonical) throw new HttpError(400, 'Choose a category from the list.');
 
-  if ((isOtherCategory || hasNoSchool) && !location) {
-    throw new HttpError(400, 'Location is required when listing under "Other" category or without a school affiliation.');
+  // Buyers need to know where to collect the item: the seller's answer,
+  // else their profile location. Campus sellers fall back to their school.
+  const resolvedSchool = String(school || seller.verification?.university || '').trim();
+  const resolvedLocation = String(location || seller.sellerProfile?.location || seller.location || '').trim();
+  if (!resolvedLocation && !resolvedSchool) {
+    throw new HttpError(400, 'Add a pickup location so buyers know where to collect the item.');
+  }
+  if (!Array.isArray(images) || images.filter(Boolean).length === 0) {
+    throw new HttpError(400, 'Add at least one photo of the item.');
   }
 
   const candidate = {
     title,
     description,
     price,
-    discountPrice,
-    category,
+    discountPrice: compareAt(price, discountPrice),
+    category: canonical,
     condition,
-    location,
-    school,
+    location: resolvedLocation,
+    school: resolvedSchool,
     city,
   };
 
@@ -394,16 +407,12 @@ export const createProduct = asyncHandler(async (req, res) => {
   }
 
   const product = await Product.create({
+    ...candidate,
     seller: seller._id,
-    title, description,
-    price, discountPrice,
     stock: stock ?? 1,
     status: stock === 0 ? 'sold_out' : 'active',
-    condition, category,
-    images: Array.isArray(images) ? images : [],
-    location: location || seller.sellerProfile?.location || seller.location,
-    school: school || seller.verification?.university || '',
-    city,
+    images: await normalizeImages(images, seller._id),
+    sellerSuspended: !!seller.restricted,
   });
 
   invalidateCatalogCache();
@@ -418,6 +427,7 @@ export const updateProduct = asyncHandler(async (req, res) => {
     throw new HttpError(403, 'You can only edit your own listings');
   }
 
+  const originalCategory = product.category;
   const allowed = [
     'title', 'description', 'price', 'discountPrice', 'stock',
     'condition', 'category', 'images', 'location', 'school', 'city',
@@ -425,6 +435,17 @@ export const updateProduct = asyncHandler(async (req, res) => {
   for (const k of allowed) {
     if (req.body[k] !== undefined) product[k] = req.body[k];
   }
+  if (req.body.images !== undefined) {
+    product.images = await normalizeImages(req.body.images, req.user._id);
+    if (!product.images.length) throw new HttpError(400, 'Keep at least one photo of the item.');
+  }
+  // A category from before the fixed list may stay as it is; a new one must be on the list.
+  if (req.body.category !== undefined && req.body.category !== originalCategory) {
+    const canonical = canonicalCategory(req.body.category);
+    if (!canonical) throw new HttpError(400, 'Choose a category from the list.');
+    product.category = canonical;
+  }
+  product.discountPrice = compareAt(product.price, product.discountPrice);
   const duplicate = await findDuplicateListing(req.user._id, {
     title: product.title,
     description: product.description,

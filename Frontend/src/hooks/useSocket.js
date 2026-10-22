@@ -2,8 +2,9 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from '../store/AuthContext';
 import { getToken } from '../api/client';
+import { API_ORIGIN } from '../api/config';
 
-const SOCKET_URL = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'http://localhost:4000';
+const SOCKET_URL = API_ORIGIN;
 
 /**
  * Hook that manages a Socket.IO connection authenticated with the current user's token.

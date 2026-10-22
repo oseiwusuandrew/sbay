@@ -14,7 +14,7 @@ router.patch(
   '/me',
   requireAuth,
   body('name').optional().isString().isLength({ min: 2, max: 80 }),
-  body('avatar').optional().isString().isLength({ max: 1_000_000 }),
+  body('avatar').optional().isString().isLength({ max: 1_500_000 }),
   body('phone').optional().isString().isLength({ max: 30 }),
   body('location').optional().isString().isLength({ max: 120 }),
   body('sellerProfile').optional().isObject(),
