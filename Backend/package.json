@@ -8,7 +8,8 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "dev:local": "node scripts/dev-local.js",
-    "seed:admin": "node src/seed/seedAdmin.js"
+    "seed:admin": "node src/seed/seedAdmin.js",
+    "reset:admin": "node scripts/reset-admin.js"
   },
   "engines": {
     "node": ">=20"
